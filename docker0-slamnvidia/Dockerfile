@@ -3,6 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
+ENV DOCKER_UPDATED_ON=20_1_2020
 
 # Update apt database
 RUN apt update
@@ -70,6 +71,15 @@ RUN apt-get install -y lsof iftop iputils-ping gdb
 ARG BRANCH=devel
 ARG BUILD_TYPE=Release
 
+RUN apt update
+RUN apt install -y apt-transport-https ca-certificates gnupg software-properties-common wget
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
+RUN  apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+RUN apt update
+RUN apt install kitware-archive-keyring
+RUN apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
+RUN apt install -y cmake
+
 # Build ycm
 RUN git clone https://github.com/robotology/ycm.git -b $BRANCH
 RUN cd ycm && mkdir build && cd build && \
@@ -87,7 +97,8 @@ RUN cd robot-testing-framework && mkdir build && cd build && \
 RUN rm -Rf robot-testing-framework
 
 # Build yarp
-RUN git clone https://github.com/robotology/yarp.git -b $BRANCH
+#RUN git clone https://github.com/robotology/yarp.git -b $BRANCH
+RUN git clone https://github.com/robotology/yarp.git -b master
 RUN cd yarp && mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
@@ -130,7 +141,8 @@ USER root
 
 # Build navigation
 WORKDIR /home/gitpod
-RUN git clone https://github.com/robotology/navigation.git -b $BRANCH
+#RUN git clone https://github.com/robotology/navigation.git -b $BRANCH
+RUN git clone https://github.com/robotology/navigation.git -b master
 RUN cd /home/gitpod/navigation && mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE && \

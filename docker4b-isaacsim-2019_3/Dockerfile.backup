@@ -1,0 +1,44 @@
+FROM randaz81/r1slam:cuda
+LABEL maintainer="marco.randazzo@iit.it"
+
+# Non-interactive installation mode
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update apt database
+RUN sudo apt update
+
+# set install_folder
+USER user1
+ENV robotology_install_folder /home/user1
+ENV user1_home /home/user1
+ENV robotology_install_user user1
+
+# Install essentials
+RUN mkdir $robotology_install_folder/isaac
+COPY *.tar*  $robotology_install_folder/isaac/
+WORKDIR $robotology_install_folder/isaac
+RUN mkdir isaac-sdk
+RUN mkdir isaac-sim
+RUN mkdir isaac-navsim
+RUN tar xf IsaacSimProject_1.2.1238533.gitdeps.tar.gz -C $robotology_install_folder/isaac/isaac-sim
+RUN tar xf isaac-sdk-2019.2-30e21124.tar.xz           -C $robotology_install_folder/isaac/isaac-sdk
+RUN tar xf isaac_navsim-2019-07-23.tar.xz             -C $robotology_install_folder/isaac/isaac-navsim
+RUN rm IsaacSimProject_1.2.1238533.gitdeps.tar.gz isaac-sdk-2019.2-30e21124.tar.xz isaac_navsim-2019-07-23.tar.xz
+
+RUN $robotology_install_folder/isaac/isaac-sdk/engine/build/scripts/install_dependencies.sh
+
+#######################################################
+# all this stuff... no!
+#RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+#RUN sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+#RUN wget http://developer.download.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda-repo-ubuntu1804-10-1-local-10.1.243-418.87.00_1.0-1_amd64.deb
+#RUN sudo dpkg -i cuda-repo-ubuntu1804-10-1-local-10.1.243-418.87.00_1.0-1_amd64.deb
+#RUN sudo apt-key add /var/cuda-repo-10-1-local-10.1.243-418.87.00/7fa2af80.pub
+#RUN sudo apt-get update
+#sudo apt-get -y install cuda
+#######################################################
+
+WORKDIR  $robotology_install_folder/isaac/isaac-sdk
+ARG test
+RUN bazel build ...
+

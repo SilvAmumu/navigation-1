@@ -3,6 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
+ENV DOCKER_UPDATED_ON=20_1_2020
 
 # Update apt database
 RUN apt update
@@ -148,7 +149,8 @@ RUN cd robot-testing-framework && mkdir build && cd build && \
 # Build yarp
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
-RUN git clone https://github.com/robotology/yarp.git -b $BRANCH
+#RUN git clone https://github.com/robotology/yarp.git -b $BRANCH
+RUN git clone https://github.com/robotology/yarp.git -b master
 RUN cd yarp && mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
@@ -173,7 +175,8 @@ RUN cd icub-main && mkdir build && cd build && \
 # Build navigation
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
-RUN git clone https://github.com/robotology/navigation.git -b $BRANCH
+#RUN git clone https://github.com/robotology/navigation.git -b $BRANCH
+RUN git clone https://github.com/robotology/navigation.git -b master
 RUN cd navigation && mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE && \
