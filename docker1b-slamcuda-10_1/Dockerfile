@@ -3,7 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=20_1_2020
+ENV DOCKER_UPDATED_ON=05_05_2020
 
 # Update apt database
 RUN apt update
@@ -11,13 +11,17 @@ RUN apt update
 # Install essentials
 RUN apt install -y apt-utils software-properties-common sudo psmisc lsb-release \
                    tmux nano wget curl build-essential git gitk cmake cmake-curses-gui \
-                   libedit-dev libxml2-dev autoconf geany meld synaptic net-tools 
+                   libedit-dev libxml2-dev autoconf \
+                   geany meld synaptic net-tools terminator \
+                   libjpeg-dev ffmpeg \
+                   octave epstool transfig \
+                   default-jdk \
+                   python python-dev python-pip ipython python-setuptools python3-setuptools
+                   
 
 # Install graphics
 RUN apt update
-RUN apt install -y xfce4 xfce4-goodies xserver-xorg-video-dummy xserver-xorg-legacy
-RUN apt update
-RUN apt install -y firefox
+RUN apt install -y xfce4 xfce4-goodies xserver-xorg-video-dummy xserver-xorg-legacy firefox
 
 RUN sed -i 's/allowed_users=console/allowed_users=anybody/' /etc/X11/Xwrapper.config
 COPY xorg.conf /etc/X11/xorg.conf
@@ -33,22 +37,13 @@ RUN git clone https://github.com/LibVNC/x11vnc.git /opt/x11vnc && \
     make && make install && \
     rm /opt/x11vnc -Rf
 
-# Install Java
-RUN apt install -y default-jdk
-
-# Install Octave
-RUN apt install -y octave epstool transfig
 
 # Install markserv
 RUN apt install -y nodejs npm
 RUN npm install --global markserv
 
 # Install jupyter
-RUN apt install -y python python-dev python-pip ipython python-setuptools python3-setuptools
 RUN pip install jupyter
-
-# Install terminator
-RUN apt install -y terminator
 
 # Install websockify
 RUN git clone https://github.com/novnc/websockify.git /opt/websockify && \
@@ -58,22 +53,6 @@ RUN git clone https://github.com/novnc/websockify.git /opt/websockify && \
 # Clone noVNC
 RUN git clone https://github.com/novnc/noVNC.git /opt/novnc
 RUN echo "<html><head><meta http-equiv=\"Refresh\" content=\"0; url=vnc.html\"></head></html>" > /opt/novnc/index.html
-
-# Install yarp dependencies
-RUN echo "deb http://www.icub.org/ubuntu `lsb_release -cs` contrib/science" > /etc/apt/sources.list.d/icub.list
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 57A5ACB6110576A6
-RUN apt update
-RUN apt install -y icub-common
-
-# Install Qt patch for Xfce
-RUN apt install -y qml-module-qt-labs-folderlistmodel qml-module-qt-labs-settings
-
-# other utilites
-RUN apt-get install -y lsof iftop iputils-ping gdb
-
-# Select branch + build type
-ARG BRANCH=devel
-ARG BUILD_TYPE=Release
 
 # install cmake 3.12 
 RUN sudo apt-get update
@@ -85,13 +64,29 @@ RUN sudo apt-get install -y kitware-archive-keyring
 RUN sudo apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
 RUN sudo apt-get install -y cmake cmake-curses-gui
 
+# Install yarp dependencies
+RUN echo "deb http://www.icub.org/ubuntu `lsb_release -cs` contrib/science" > /etc/apt/sources.list.d/icub.list
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 57A5ACB6110576A6
+RUN apt update
+RUN apt install -y icub-common libopencv-dev
+
+# Install Qt patch for Xfce
+RUN apt install -y qml-module-qt-labs-folderlistmodel qml-module-qt-labs-settings
+
+# other utilites
+RUN apt-get install -y lsof iftop iputils-ping gdb bash-completion
+
+# Select branch + build type
+ARG BRANCH=devel
+ARG BUILD_TYPE=Release
+
 # ROS installation
 RUN sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
 RUN sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 RUN apt update
 RUN apt install -y ros-melodic-desktop-full
 RUN apt install -y ros-melodic-cartographer locate mercurial ros-melodic-teleop-tools ros-melodic-teleop-twist-joy ros-melodic-teleop-twist-keyboard
-RUN apt install -y ros-melodic-nav-core ros-melodic-map-server ros-melodic-gmapping ros-melodic-amcl ros-melodic-rtabmap ros-melodic-mapviz ros-melodic-moveit
+RUN apt install -y ros-melodic-nav-core ros-melodic-map-server ros-melodic-gmapping ros-melodic-amcl ros-melodic-rtabmap ros-melodic-mapviz ros-melodic-moveit python-rosdep
 RUN rosdep init
 
 # create gitpod user
@@ -156,9 +151,27 @@ RUN cd yarp && mkdir build && cd build && \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DYARP_COMPILE_libYARP_math=ON \
     -DYARP_COMPILE_GUIS=ON \
-    -DYARP_COMPILE_DEVICE_PLUGINS=ON && \
+    -DYARP_COMPILE_DEVICE_PLUGINS=ON \
+    -DENABLE_yarpcar_mjpeg=ON \
+    -DENABLE_yarpcar_depthimage=ON \
+    -DENABLE_yarpcar_depthimage2=ON \
+    -DENABLE_yarpcar_segmentationimage=ON \
+    -DENABLE_yarpcar_portmonitor=ON \
+    -DENABLE_yarpmod_fakeAnalogSensor=ON \                                                                                                
+    -DENABLE_yarpmod_fakeBattery=ON  \                                                                                            
+    -DENABLE_yarpmod_fakeDepthCamera=ON \                                                                                           
+    -DENABLE_yarpmod_fakeIMU=ON  \                                                                                               
+    -DENABLE_yarpmod_fakeLaser=ON  \                                                                                             
+    -DENABLE_yarpmod_fakeLocalizer=ON \                                                                                        
+    -DENABLE_yarpmod_fakeMicrophone=ON  \                                                                                            
+    -DENABLE_yarpmod_fakeMotionControl=ON  \                                                                                            
+    -DENABLE_yarpmod_fakeNavigation=ON  \                                                                                           
+    -DENABLE_yarpmod_fakeSpeaker=ON  \                                                                                            
+    -DENABLE_yarpmod_fakebot=ON && \   
     sudo make install
-RUN sudo cp yarp/scripts/yarp_completion /etc/bash_completion.d/.
+ 
+# Install yarp completion   
+RUN sudo ln -s /usr/local/share/bash-completion/completions/yarp /usr/share/bash-completion/completions
 
 # Build icub-main
 USER $robotology_install_user
@@ -252,6 +265,13 @@ ARG GITHUB_TOKEN
 #    make install
 # RUN rm -Rf audition-projects-helpers
 
+#unix socket
+USER $robotology_install_user
+WORKDIR $robotology_install_folder
+RUN git clone --branch master https://github.com/robotology/yarp-unix-socket.git 
+RUN cd yarp-unix-socket && mkdir build && cd build && cmake .. && \
+    sudo make install
+    
 # Set up .bashrc
 RUN echo "PS1='\[\e]0;\u \w\a\]\[\033[01;32m\]\u\[\033[00m\] \[\033[01;34m\]\w\[\033[00m\] \$ '" >> /home/$robotology_install_user/.bashrc
 RUN echo "export PATH=\$PATH:\$robotology_install_folder/iCubContrib/bin" >> /home/$robotology_install_user/.bashrc
@@ -261,7 +281,7 @@ ENV GAZEBO_MODEL_PATH=$robotology_install_folder/cer-sim/gazebo/
 
 # Set environmental variables
 ENV DISPLAY=:1
-ENV YARP_DATA_DIRS=/usr/local/share/yarp:/usr/local/share/iCub:$robotology_install_folder/iCubContrib/share/ICUBcontrib
+ENV YARP_DATA_DIRS=/usr/local/share/yarp:/usr/local/share/iCub:$robotology_install_folder/iCubContrib/share/ICUBcontrib:/home/user1/navigation/build/share/navigation
 ENV LD_LIBRARY_PATH=/usr/local/lib/yarp:/usr/local/lib/robottestingframework
 ENV GAZEBO_PLUGIN_PATH=/usr/local/lib/
 ENV GAZEBO_MODEL_PATH=$robotology_install_folder/cer-sim/gazebo/

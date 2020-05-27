@@ -3,7 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=24_1_2020
+ENV DOCKER_UPDATED_ON=5_5_2020
 
 # Update apt database
 RUN sudo apt update
@@ -17,17 +17,20 @@ ENV robotology_install_user user1
 # Install essentials
 RUN mkdir $robotology_install_folder/isaac
 COPY *.tar*  $robotology_install_folder/isaac/
+
 WORKDIR $robotology_install_folder/isaac
 RUN mkdir isaac-sdk
 RUN mkdir isaac-sim
-RUN mkdir isaac-navsim
 RUN tar xf isaac_sim_unity3d-20191213-a61b74b7.tar.gz  -C $robotology_install_folder/isaac/isaac-sim
 RUN tar xf isaac-sdk-20191213-65ec14db.tar.xz          -C $robotology_install_folder/isaac/isaac-sdk
 RUN rm isaac-sdk-20191213-65ec14db.tar.xz isaac_sim_unity3d-20191213-a61b74b7.tar.gz
 
-RUN sudo apt-get install mesa-utils
-RUN pip install tf-nightly
-RUN python -c "import tensorflow"
+RUN sudo apt-get install -y mesa-utils python python-dev python-pip ipython python-setuptools python3-setuptools python3-pip
+#RUN pip install --upgrade pip
+#RUN pip install tf-nightly
+#RUN pip install tensorflow==1.15
+#RUN pip install tensorflow-gpu==1.15
+#RUN python -c "import tensorflow"
 
 WORKDIR  $robotology_install_folder/isaac/isaac-sdk
 ENV QT_X11_NO_MITSHM=1
@@ -35,20 +38,38 @@ ENV DISPLAY=
 ENV TZ=Europe/Rome
 EXPOSE 3000-3010
 
+# Prepare Unity installation
+COPY UnityHub.AppImage $robotology_install_folder/isaac/
+
+# This seems to work, with some red warnings
+RUN $robotology_install_folder/isaac/isaac-sdk/engine/build/scripts/install_dependencies.sh
+
 ##############################
 # The following commands are not automatically performed by now and should be executed the first time to complete the built image
 #
 # This is the repo where the bridge stuff is located
-# RUN git clone https://github.com/randaz81/isaac-bridge
+# RUN git clone https://github.com/robotology/isaac-bridge
 #
-# this installs the dependicies required to build isaac-sdk
+# Links
+# RUN ln -s ~/isaac/isaac-sim  ~/isaac_sim_unity3d
+# RUN ln -s /usr/local /home/user1/yarp-install
+#
+# this installs the dependencies required to build isaac-sdk
 # RUN $robotology_install_folder/isaac/isaac-sdk/engine/build/scripts/install_dependencies.sh
 # 
 # Bazel build
 # WORKDIR  $robotology_install_folder/isaac/isaac-sdk
 # RUN bazel build ...
+# 
+# add the following to bashrc
+# source /usr/local/lib/bazel/bin/bazel-complete.bash
 #
-# After build, save the docker image as a new container: eg. docker commit 8d8fcda30d24 randaz81/isaac:built-cuda10-0_v2
+# Install Unity editor (docker requires --privileged)
+# ./UnityHub.AppImage unityhub://2018.3.11f1/5063218e4ab8
+#
+# After build, save the docker image as a new container, eg:
+# docker ps
+# docker commit 8d8fcda30d24 randaz81/isaac:built-2019_3
 #
 # The following are unecessary
 # RUN bazel build //apps/tutorials/ping

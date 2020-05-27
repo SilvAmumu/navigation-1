@@ -1,9 +1,9 @@
-FROM randaz81/r1slam:cuda
+FROM randaz81/r1slam:cuda10_0
 LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=20_1_2020
+ENV DOCKER_UPDATED_ON=28_2_2020
 
 # Update apt database
 RUN sudo apt update
@@ -45,17 +45,19 @@ RUN echo "export PATH=\$PATH:/home/user1/assistive-rehab/build/bin" >> $user1_ho
 
 #navigation update
 WORKDIR $robotology_install_folder/navigation
-RUN git pull
+
+RUN cd $robotology_install_folder/navigation/build && git pull && \
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=$BUILD_TYPE && \
+    sudo make -j4
+    
 WORKDIR $robotology_install_folder/navigation/build
-RUN make -j4 extendedRangefinder2DWrapper
-RUN echo "export YARP_DATA_DIRS=\$YARP_DATA_DIRS:/home/user1/navigation/buils/share/navigation"
+ENV YARP_DATA_DIRS="$YARP_DATA_DIRS:/home/user1/navigation/build/share/navigation"
 
 COPY yarpOpenPose.ini /workspace
 COPY skeleton.ini /workspace
 
 # replace rangefinder2DWrapper with extendedRangefinder2DWrapper
 COPY gazebo_cer_doublelaser.ini /home/user1/cer-sim/gazebo/cer/conf
-
-WORKDIR /workspace
 
 #CMD ["bash"]

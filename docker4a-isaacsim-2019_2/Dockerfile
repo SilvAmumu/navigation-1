@@ -17,6 +17,7 @@ ENV robotology_install_user user1
 # Install essentials
 RUN mkdir $robotology_install_folder/isaac
 COPY *.tar*  $robotology_install_folder/isaac/
+
 WORKDIR $robotology_install_folder/isaac
 RUN mkdir isaac-sdk
 RUN mkdir isaac-sim
@@ -40,7 +41,7 @@ EXPOSE 3000-3010
 # The following commands are not automatically performed by now and should be executed the first time to complete the built image
 #
 # This is the repo where the bridge stuff is located
-# RUN git clone https://github.com/randaz81/isaac-bridge
+# RUN git clone https://github.com/robotology/isaac-bridge
 #
 # this installs the dependicies required to build isaac-sdk
 # RUN $robotology_install_folder/isaac/isaac-sdk/engine/build/scripts/install_dependencies.sh
