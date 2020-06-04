@@ -3,7 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=05_05_2020
+ENV DOCKER_UPDATED_ON=03_06_2020
 
 # Update apt database
 RUN apt update
@@ -220,7 +220,7 @@ RUN rm simbody-ubuntu-1804-ipopt-fix-dropin.zip
 # CER stuff
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
-RUN git clone https://github.com/robotology/cer.git -b $BRANCH
+RUN git clone https://github.com/robotology/cer.git -b master
 RUN cd cer && mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \

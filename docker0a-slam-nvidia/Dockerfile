@@ -3,7 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=04_04_2020
+ENV DOCKER_UPDATED_ON=03_06_2020
 
 # Update apt database
 RUN apt update
@@ -150,7 +150,6 @@ RUN cd robot-testing-framework && mkdir build && cd build && \
 # Build yarp
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
-#RUN git clone https://github.com/robotology/yarp.git -b $BRANCH
 RUN git clone https://github.com/robotology/yarp.git -b master
 RUN cd yarp && mkdir build && cd build && \
     cmake .. \
@@ -158,7 +157,22 @@ RUN cd yarp && mkdir build && cd build && \
     -DYARP_COMPILE_libYARP_math=ON \
     -DYARP_COMPILE_GUIS=ON \
     -DYARP_COMPILE_DEVICE_PLUGINS=ON \
-    -DENABLE_yarpcar_mjpeg=ON && \
+    -DENABLE_yarpcar_mjpeg=ON \
+    -DENABLE_yarpcar_depthimage=ON \
+    -DENABLE_yarpcar_depthimage2=ON \
+    -DENABLE_yarpcar_segmentationimage=ON \
+    -DENABLE_yarpcar_portmonitor=ON \
+    -DENABLE_yarpmod_fakeAnalogSensor=ON \                                                                                                
+    -DENABLE_yarpmod_fakeBattery=ON  \                                                                                            
+    -DENABLE_yarpmod_fakeDepthCamera=ON \                                                                                           
+    -DENABLE_yarpmod_fakeIMU=ON  \                                                                                               
+    -DENABLE_yarpmod_fakeLaser=ON  \                                                                                             
+    -DENABLE_yarpmod_fakeLocalizer=ON \                                                                                        
+    -DENABLE_yarpmod_fakeMicrophone=ON  \                                                                                            
+    -DENABLE_yarpmod_fakeMotionControl=ON  \                                                                                            
+    -DENABLE_yarpmod_fakeNavigation=ON  \                                                                                           
+    -DENABLE_yarpmod_fakeSpeaker=ON  \                                                                                            
+    -DENABLE_yarpmod_fakebot=ON && \   
     sudo make install
  
 # Install yarp completion   
@@ -179,7 +193,6 @@ RUN cd icub-main && mkdir build && cd build && \
 # Build navigation
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
-#RUN git clone https://github.com/robotology/navigation.git -b $BRANCH
 RUN git clone https://github.com/robotology/navigation.git -b master
 RUN cd navigation && mkdir build && cd build && \
     cmake .. \
@@ -209,9 +222,10 @@ RUN rm libsimbody-dev_3.5.4+dfsg2-1_amd64.deb
 RUN rm simbody-ubuntu-1804-ipopt-fix-dropin.zip
 
 # CER stuff
+ARG _CER_WAYPOINT
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
-RUN git clone https://github.com/robotology/cer.git -b $BRANCH
+RUN git clone https://github.com/robotology/cer.git -b master
 RUN cd cer && mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \

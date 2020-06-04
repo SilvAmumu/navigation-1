@@ -21,9 +21,9 @@ COPY *.tar*  $robotology_install_folder/isaac/
 WORKDIR $robotology_install_folder/isaac
 RUN mkdir isaac-sdk
 RUN mkdir isaac-sim
-RUN tar xf isaac_sim_unity3d-20191213-a61b74b7.tar.gz  -C $robotology_install_folder/isaac/isaac-sim
-RUN tar xf isaac-sdk-20191213-65ec14db.tar.xz          -C $robotology_install_folder/isaac/isaac-sdk
-RUN rm isaac-sdk-20191213-65ec14db.tar.xz isaac_sim_unity3d-20191213-a61b74b7.tar.gz
+RUN tar xf isaac_sim_unity3d-20200527-a8205d23.tar.xz -C $robotology_install_folder/isaac/isaac-sim
+RUN tar xf isaac-sdk-20200527-0159e2bab.tar.xz         -C $robotology_install_folder/isaac/isaac-sdk
+RUN rm isaac-sdk-20200527-0159e2bab.tar.xz isaac_sim_unity3d-20200527-a8205d23.tar.xz
 
 RUN sudo apt-get install -y mesa-utils python python-dev python-pip ipython python-setuptools python3-setuptools python3-pip
 #RUN pip install --upgrade pip
