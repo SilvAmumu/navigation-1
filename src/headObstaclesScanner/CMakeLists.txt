@@ -19,6 +19,9 @@ file(GLOB folder_header *.h)
 source_group("Source Files" FILES ${folder_source})
 source_group("Header Files" FILES ${folder_header})
 
+find_path(GLPK_INCLUDE_DIR "glpk.h")
+find_library(GLPK_LIB glpk)
+
 find_package( OpenCV REQUIRED )
 find_package(YARP REQUIRED COMPONENTS sig cv dev os math rosmsg)
 include_directories(${OpenCV_INCLUDE_DIRS} ${ICUB_INCLUDE_DIRS})
@@ -26,6 +29,7 @@ add_executable(${PROJECT_NAME} ${folder_source} ${folder_header})
 #add_executable(${PROJECT_NAME} ${folder_source})
 target_link_libraries(${PROJECT_NAME} ${YARP_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} ${GLPK_LIB})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 

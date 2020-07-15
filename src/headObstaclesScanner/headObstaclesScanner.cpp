@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <glpk.h>
+
 #include <yarp/os/Network.h>
 #include <yarp/os/RFModule.h>
 #include <yarp/dev/ControlBoardInterfaces.h>
@@ -70,7 +72,6 @@ class MyModule : public yarp::os::RFModule
     double head_speed = 30.0;
     double rotation_range = 25.0;
     double circle_range = 1;
-
     // devices default parameters
     std::string  m_remote_localization = "/localizationServer";
     std::string  m_remote_map = "/mapServer";

@@ -1,13 +1,13 @@
 #include "cornerdetector.h"
 
-
-
 using namespace cv;
 using namespace std;
 using namespace cv;
 using namespace std;
 using namespace yarp::sig;
 using namespace yarp::os;
+
+
 
 
 
