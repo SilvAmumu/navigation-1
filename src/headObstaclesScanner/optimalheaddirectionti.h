@@ -16,6 +16,7 @@
 #include <yarp/sig/Matrix.h>
 
 #include <glpk.h>
+#include <chrono>
 
 using namespace std;
 using namespace yarp::sig;
@@ -51,6 +52,8 @@ public:
 
 
     // output
+    double objective_value = -1;
+    vector<double> X;
 
     //service
     glp_prob *mip;
@@ -64,10 +67,9 @@ public:
 
 private:
 
-    // VARIABLES
-    yarp::sig::Matrix polar_corners;   //r, t, weight
-    yarp::sig::Matrix polar_objects;   //r, t, weight
-    yarp::sig::Matrix polar_wayoints;  //r, t, weight
+    // VARIABLES   
+    yarp::sig::Matrix abs_points;  //r, t, type, weight (type: 1-corners , 2-objects, 3-waypoint)
+    yarp::sig::Matrix pol_points;  //r, t, type, weight
 
 
     // METHODS

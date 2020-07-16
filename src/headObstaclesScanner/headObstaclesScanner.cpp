@@ -176,7 +176,7 @@ class MyModule : public yarp::os::RFModule
             if (!getRobotPosition())
                 return false;
 
-            // get trajectory
+            // get trajectory (waypoints)
             getTrajectory();
 
             // calculate relative position
@@ -310,7 +310,22 @@ class MyModule : public yarp::os::RFModule
 
         }
 
-        testMilp();
+        if (headModeName=="optimal_positioning")
+        {
+            // get robot position
+            if (!getRobotPosition())
+                return false;
+
+            // get relative position of the corners
+            if (!getRelMapCorners())
+                return false;
+            // get trajectory (waypoints)
+            getTrajectory();
+
+            // call the optimization
+            callOptimization();
+
+        }
 
         return true;
     }
@@ -475,7 +490,7 @@ class MyModule : public yarp::os::RFModule
 
 
 
-        if ((headModeName=="trajectory") || (headModeName=="closer_corner"))
+        if ((headModeName=="trajectory") || (headModeName=="closer_corner") || (headModeName=="optimal_positioning"))
         {
             // parameters for localization and navigation servers
 
@@ -541,7 +556,7 @@ class MyModule : public yarp::os::RFModule
             }
         }
 
-        if (headModeName=="closer_corner")
+        if (headModeName=="closer_corner" || (headModeName=="optimal_positioning"))
         {
             // read map
             if (head_group.check("map_name"))
@@ -801,14 +816,14 @@ class MyModule : public yarp::os::RFModule
 
       }
 
-      bool testMilp ()
+      bool callOptimization ()
       {
           optimalHeadDirectionTi optiProb;
 
           optiProb.robot_pose = robot_pose;
           optiProb.abs_corners = abs_map_corners;
-          //optiProb.abs_objects = abs_map_corners;
-          //optiProb.abs_wayoints = abs_map_corners;
+          //optiProb.abs_objects = abs_objects;
+          optiProb.abs_wayoints = abs_waypoints;
           optiProb.solveProblem();
       }
 
