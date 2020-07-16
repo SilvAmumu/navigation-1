@@ -33,6 +33,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 
 #include "cornerdetector.h"
+#include "optimalheaddirectionti.h"
 
 #include <yarp/sig/Image.h>
 #include <yarp/sig/ImageDraw.h>
@@ -44,9 +45,6 @@
 #ifndef M_PI
 #define M_PI 3.14159265
 #endif
-
-const double RAD2DEG = 180.0 / M_PI;
-const double DEG2RAD = M_PI / 180.0;
 
 #define TIMEOUT_MAX 100
 
@@ -120,6 +118,7 @@ class MyModule : public yarp::os::RFModule
     yarp::sig::Matrix map_corners;
     vector<Point2f> opencv_corners;
     yarp::sig::Matrix rel_map_corners;
+    yarp::sig::Matrix abs_map_corners;
     yarp::sig::Matrix robot_pose;
     std::vector<double> waypoint_distance;
     Vector relative_target_loc = {0, 0, 0};
@@ -310,6 +309,8 @@ class MyModule : public yarp::os::RFModule
             lookPoint();
 
         }
+
+        testMilp();
 
         return true;
     }
@@ -699,14 +700,17 @@ class MyModule : public yarp::os::RFModule
     {
           cornersMapObj->calculateCorners();
           map_corners = cornersMapObj->yarp_corners;
+          abs_map_corners.resize(map_corners.rows() , map_corners.cols());
           rel_map_corners.resize(map_corners.rows() , map_corners.cols());
 
           for (int i=0; i<map_corners.rows(); i++)
           {
-                  rel_map_corners(i,0) = map_corners(i,0)*map_resolution - robot_pose(0,0);
-                  rel_map_corners(i,1) = map_corners(i,1)*map_resolution - robot_pose(0,1);
+              abs_map_corners(i,0) = map_corners(i,0)*map_resolution;
+              abs_map_corners(i,1) = map_corners(i,1)*map_resolution;
+              rel_map_corners(i,0) = abs_map_corners(i,0) - robot_pose(0,0);
+              rel_map_corners(i,1) = abs_map_corners(i,1) - robot_pose(0,1);
           }
-        return true;
+          return true;
     }
 
       bool drawImage()
@@ -795,6 +799,17 @@ class MyModule : public yarp::os::RFModule
             std::cout << "commanded angle: " << command[1] << '\n';
 #endif
 
+      }
+
+      bool testMilp ()
+      {
+          optimalHeadDirectionTi optiProb;
+
+          optiProb.robot_pose = robot_pose;
+          optiProb.abs_corners = abs_map_corners;
+          //optiProb.abs_objects = abs_map_corners;
+          //optiProb.abs_wayoints = abs_map_corners;
+          optiProb.solveProblem();
       }
 
 };
