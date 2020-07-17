@@ -27,8 +27,13 @@ using namespace yarp::os;
 #endif
 
 
-const double RAD2DEG = 180.0 / M_PI;
-const double DEG2RAD = M_PI / 180.0;
+#ifndef RAD2DEG
+#define RAD2DEG (180.0 / M_PI);
+#endif
+
+#ifndef DEG2RAD
+#define DEG2RAD (M_PI / 180.0);
+#endif
 
 
 

@@ -9,7 +9,7 @@ optimalHeadDirectionTv::optimalHeadDirectionTv()
 
 }
 
-void optimalHeadDirectionTv::solveProblem()
+void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HEAD SPEED
 {
     // get data
 
@@ -19,8 +19,8 @@ void optimalHeadDirectionTv::solveProblem()
     double M_big = camera_fov +360;
     double M_big2 = max_head_rotation * 3;
 
-    //obtain polar coordinates
-    obtainPolarCoordinates(robot_pose);
+    //obtain polar coordinates of all the points (also in future)
+    futurePointsCalculation();
 
     // clean non relevant points
     cleanNonRelevantPoints();
@@ -36,7 +36,7 @@ void optimalHeadDirectionTv::solveProblem()
     int constr_point_int_num = 0;
 
     constr_point_int_num = pol_points.rows() * 2;
-    constr_num = constr_point_int_num + 4; //DA SISTEMARE I $ CONSTRAINT AGGIUNTIVI !!!!!!!!!!!!!
+    constr_num = constr_point_int_num + 4*number_time_steps +2*number_time_steps; //4* for abs(H) in the objective function and 2* for rotation speed limit
     glp_add_rows(mip, constr_num);
 
 #ifdef DEBUG
@@ -48,7 +48,7 @@ void optimalHeadDirectionTv::solveProblem()
     cout << pol_points.toString() << '\n';
 #endif
 
-    for (int i=0; i<pol_points.rows(); i++)
+    for(int i=0; i<pol_points.rows(); i++)
     {
         //cout << "pol_points index: " << i << '\n';
         constr_name = "cUP" + std::to_string(i+1);
@@ -60,21 +60,42 @@ void optimalHeadDirectionTv::solveProblem()
         glp_set_row_bnds(mip, 2*i+2, GLP_LO, pol_points(i,1) - camera_fov/2 - M_big, 0.0);
     }
 
-    // adjoint constraints for abs(H1) in the objective function
+    // adjoint constraints for abs(Ht) in the objective function
 
-    glp_set_row_name(mip, constr_point_int_num + 1, "adj1_1");
-    glp_set_row_bnds(mip, constr_point_int_num + 1, GLP_LO, 0.0, 0.0);
+    for(int i=0; i<number_time_steps; i++)
+    {
+        //adjt_1
+        constr_name = "adj" + std::to_string(i+1) + "_1";
+        glp_set_row_name(mip, constr_point_int_num + 1 + 6*i, constr_name.c_str());
+        glp_set_row_bnds(mip, constr_point_int_num + 1 + 6*i, GLP_LO, 0.0, 0.0);
 
-    glp_set_row_name(mip, constr_point_int_num + 2, "adj1_2");
-    glp_set_row_bnds(mip, constr_point_int_num + 2, GLP_LO, -M_big2, 0.0);
+        //adjt_2
+        constr_name = "adj" + std::to_string(i+1) + "_2";
+        glp_set_row_name(mip, constr_point_int_num + 2 + 6*i, constr_name.c_str());
+        glp_set_row_bnds(mip, constr_point_int_num + 2 + 6*i, GLP_LO, -M_big2, 0.0);
 
+        //adjt_3
+        constr_name = "adj" + std::to_string(i+1) + "_3";
+        glp_set_row_name(mip, constr_point_int_num + 3 + 6*i, constr_name.c_str());
+        glp_set_row_bnds(mip, constr_point_int_num + 3 + 6*i, GLP_UP, 0.0, 0.0);
 
-    glp_set_row_name(mip, constr_point_int_num + 3, "adj1_3");
-    glp_set_row_bnds(mip, constr_point_int_num + 3, GLP_UP, 0.0, 0.0);
+        //adjt_4
+        constr_name = "adj" + std::to_string(i+1) + "_4";
+        glp_set_row_name(mip, constr_point_int_num + 4 + 6*i, constr_name.c_str());
+        glp_set_row_bnds(mip, constr_point_int_num + 4 + 6*i, GLP_UP, 0.0, 0.0);
 
+        //speedt_1
+        constr_name = "speed" + std::to_string(i+1) + "_1";
+        glp_set_row_name(mip, constr_point_int_num + 5 + 6*i, constr_name.c_str());
+        glp_set_row_bnds(mip, constr_point_int_num + 5 + 6*i, GLP_LO, -max_head_speed*time_step, 0.0);
 
-    glp_set_row_name(mip, constr_point_int_num + 4, "adj1_4");
-    glp_set_row_bnds(mip, constr_point_int_num + 4, GLP_UP, 0.0, 0.0);
+        //speedt_2
+        constr_name = "speed" + std::to_string(i+1) + "_2";
+        glp_set_row_name(mip, constr_point_int_num + 6 + 6*i, constr_name.c_str());
+        glp_set_row_bnds(mip, constr_point_int_num + 6 + 6*i, GLP_UP, 0.0, max_head_speed*time_step);
+
+    }
+
 
 
     //set states and boudaries
@@ -83,10 +104,11 @@ void optimalHeadDirectionTv::solveProblem()
     int states_point_int_num = 0;
 
     states_point_int_num = pol_points.rows();
-    states_num = states_point_int_num + 3;
+    states_num = states_point_int_num + 3*number_time_steps;
 
     glp_add_cols(mip, states_num);
 
+    // binary variables (referred to constraints)
     for(int i=0; i<states_point_int_num; i++)
     {
         if (pol_points(i,2) == 1)
@@ -101,20 +123,25 @@ void optimalHeadDirectionTv::solveProblem()
         glp_set_col_kind(mip, i+1, GLP_IV);
     }
 
-    // adjoint states for abs(H1) in the objective function
+    // adjoint states for abs(Ht) in the objective function
+    for(int i=0; i<number_time_steps; i++)
+    {
+        states_name = "H" + std::to_string(i+1);
+        glp_set_col_name(mip, states_point_int_num + 1 + 3*i, states_name.c_str());
+        glp_set_col_bnds(mip, states_point_int_num + 1 + 3*i, GLP_DB, -max_head_rotation, max_head_rotation);
 
-    glp_set_col_name(mip, states_point_int_num + 1, "H1");
-    glp_set_col_bnds(mip, states_point_int_num + 1, GLP_DB, -max_head_rotation, max_head_rotation);
+        states_name = "Hadj" + std::to_string(i+1);
+        glp_set_col_name(mip, states_point_int_num + 2 + 3*i, states_name.c_str());
+        glp_set_col_bnds(mip, states_point_int_num + 2 + 3*i, GLP_UP, 0.0, max_head_rotation*2);
 
-    glp_set_col_name(mip, states_point_int_num + 2, "Hadj1");
-    glp_set_col_bnds(mip, states_point_int_num + 2, GLP_UP, 0.0, max_head_rotation*2);
-
-    glp_set_col_name(mip, states_point_int_num + 3, "Hi1");
-    glp_set_col_bnds(mip, states_point_int_num + 3, GLP_DB, 0, 1);
-    glp_set_col_kind(mip, states_point_int_num + 3, GLP_IV);
+        states_name = "Hi" + std::to_string(i+1);
+        glp_set_col_name(mip, states_point_int_num + 3 + 3*i, states_name.c_str());
+        glp_set_col_bnds(mip, states_point_int_num + 3 + 3*i, GLP_DB, 0, 1);
+        glp_set_col_kind(mip, states_point_int_num + 3 + 3*i, GLP_IV);
+    }
 
     //set problem matrix
-    int matrix_elements = constr_point_int_num * 2 + 10;  //2 each constraint + 10 for adjoint
+    int matrix_elements = constr_point_int_num * 2 + 10*number_time_steps +4*number_time_steps;  //2 each constraint + 10 for adjoint per each time step + 4 for speed limit per each time step
     int cont =0;
     int ia[1+matrix_elements];
     int ja[1+matrix_elements];
@@ -148,61 +175,94 @@ void optimalHeadDirectionTv::solveProblem()
         ar[cont] = -M_big;
     }
 
-    // adjoint elements for abs(H1) in the objective function
-    //adj1_1 H1
-    cont++;
-    ia[cont] = constr_point_int_num + 1;
-    ja[cont] = states_point_int_num + 1;
-    ar[cont] = 1;
-    //adj1_1 Hadj1
-    cont++;
-    ia[cont] = constr_point_int_num + 1;
-    ja[cont] = states_point_int_num + 2;
-    ar[cont] = -1;
-    //adj1_1 Hi1
-    cont++;
-    ia[cont] = constr_point_int_num + 1;
-    ja[cont] = states_point_int_num + 3;
-    ar[cont] = M_big2;
+    for(int i=0; i<number_time_steps; i++)
+    {
+        // adjoint elements for abs(Ht) in the objective function
+        //adjt_1 Ht
+        cont++;
+        ia[cont] = constr_point_int_num + 1 + 6*i;
+        ja[cont] = states_point_int_num + 1 + 3*i;
+        ar[cont] = 1;
+        //adjt_1 Hadjt
+        cont++;
+        ia[cont] = constr_point_int_num + 1 + 6*i;
+        ja[cont] = states_point_int_num + 2 + 3*i;
+        ar[cont] = -1;
+        //adjt_1 Hit
+        cont++;
+        ia[cont] = constr_point_int_num + 1 + 6*i;
+        ja[cont] = states_point_int_num + 3 + 3*i;
+        ar[cont] = M_big2;
 
-    //adj1_2 H1
-    cont++;
-    ia[cont] = constr_point_int_num + 2;
-    ja[cont] = states_point_int_num + 1;
-    ar[cont] = -1;
-    //adj1_2 Hadj1
-    cont++;
-    ia[cont] = constr_point_int_num + 2;
-    ja[cont] = states_point_int_num + 2;
-    ar[cont] = -1;
-    //adj1_2 Hi1
-    cont++;
-    ia[cont] = constr_point_int_num + 2;
-    ja[cont] = states_point_int_num + 3;
-    ar[cont] = -M_big2;
+        //adjt_2 Ht
+        cont++;
+        ia[cont] = constr_point_int_num + 2 + 6*i;
+        ja[cont] = states_point_int_num + 1 + 3*i;
+        ar[cont] = -1;
+        //adjt_2 Hadjt
+        cont++;
+        ia[cont] = constr_point_int_num + 2 + 6*i;
+        ja[cont] = states_point_int_num + 2 + 3*i;
+        ar[cont] = -1;
+        //adjt_2 Hit
+        cont++;
+        ia[cont] = constr_point_int_num + 2 + 6*i;
+        ja[cont] = states_point_int_num + 3 + 3*i;
+        ar[cont] = -M_big2;
 
-    //adj1_3 H1
-    cont++;
-    ia[cont] = constr_point_int_num + 3;
-    ja[cont] = states_point_int_num + 1;
-    ar[cont] = 1;
-    //adj1_3 Hadj1
-    cont++;
-    ia[cont] = constr_point_int_num + 3;
-    ja[cont] = states_point_int_num + 2;
-    ar[cont] = -1;
+        //adjt_3 Ht
+        cont++;
+        ia[cont] = constr_point_int_num + 3 + 6*i;
+        ja[cont] = states_point_int_num + 1 + 3*i;
+        ar[cont] = 1;
+        //adjt_3 Hadjt
+        cont++;
+        ia[cont] = constr_point_int_num + 3 + 6*i;
+        ja[cont] = states_point_int_num + 2 + 3*i;
+        ar[cont] = -1;
 
-    //adj1_4 H1
-    cont++;
-    ia[cont] = constr_point_int_num + 4;
-    ja[cont] = states_point_int_num + 1;
-    ar[cont] = -1;
-    //adj1_4 Hadj1
-    cont++;
-    ia[cont] = constr_point_int_num + 4;
-    ja[cont] = states_point_int_num + 2;
-    ar[cont] = -1;
+        //adjt_4 Ht
+        cont++;
+        ia[cont] = constr_point_int_num + 4 + 6*i;
+        ja[cont] = states_point_int_num + 1 + 3*i;
+        ar[cont] = -1;
 
+        //adjt_4 Hadjt
+        cont++;
+        ia[cont] = constr_point_int_num + 4 + 6*i;
+        ja[cont] = states_point_int_num + 2 + 3*i;
+        ar[cont] = -1;
+
+        //speedt_1 Ht
+        cont++;
+        ia[cont] = constr_point_int_num + 5 + 6*i;
+        ja[cont] = states_point_int_num + 1 + 3*i;
+        ar[cont] = 1;
+
+        //speedt_1 Ht-1
+        cont++;
+        ia[cont] = constr_point_int_num + 5 + 6*i;
+        if (i==0)
+            ja[cont] = states_point_int_num + 1 + 3*i;
+        else
+            ja[cont] = states_point_int_num + 1 + 3*(i-1);
+        ar[cont] = -1;
+
+        //speedt_2 Ht
+        cont++;
+        ia[cont] = constr_point_int_num + 6 + 6*i;
+        ja[cont] = states_point_int_num + 1 + 3*i;
+        ar[cont] = 1;
+
+        //speedt_2 Ht-1
+        cont++;
+        ia[cont] = constr_point_int_num + 6 + 6*i;
+        if (i==0)
+            ja[cont] = states_point_int_num + 1 + 3*i;
+        else
+            ja[cont] = states_point_int_num + 1 + 3*(i-1);
+        ar[cont] = -1;
+    }
 
     glp_load_matrix(mip, matrix_elements, ia, ja, ar);
 
@@ -231,8 +291,11 @@ void optimalHeadDirectionTv::solveProblem()
         glp_set_obj_coef(mip, i+1, weight_coeff);
 
     }
-    //the Hadj1
-     glp_set_obj_coef(mip, states_point_int_num+2, std_weight_absHeading);
+    //the Hadjt
+    for(int i=0; i<number_time_steps; i++)
+    {
+        glp_set_obj_coef(mip, states_point_int_num + 2 +3*i, std_weight_absHeading);
+    }
 
     //solve the problem
     glp_iocp parm;
@@ -256,8 +319,8 @@ void optimalHeadDirectionTv::solveProblem()
 
     //print problem statement
 #ifdef DEBUG
-    glp_write_lp(mip, NULL, "problem_statement_output.txt");
-    glp_print_mip(mip,"Problem_solution.txt");
+    glp_write_lp(mip, NULL, "problem_statement_outputTV.txt");
+    glp_print_mip(mip,"Problem_solutionTV.txt");
     cout << "objective_value: " << objective_value << '\n';
     cout << "MILP solution: " << '\n';
     for(int i=0; i<states_num; i++)
@@ -267,7 +330,7 @@ void optimalHeadDirectionTv::solveProblem()
 #endif
 }
 
-void optimalHeadDirectionTv::obtainPolarCoordinates(yarp::sig::Matrix robot_posef)
+yarp::sig::Matrix optimalHeadDirectionTv::obtainPolarCoordinates(yarp::sig::Matrix robot_posef)
 {
     // calculate polar coordinates in the ROBOT reference system
     abs_points.resize(abs_corners.rows() + abs_wayoints.rows() + abs_objects.rows(), 4);
@@ -298,18 +361,18 @@ void optimalHeadDirectionTv::obtainPolarCoordinates(yarp::sig::Matrix robot_pose
         cont ++;
     }
 
-    pol_points = abs_points;
+    yarp::sig::Matrix pol_pointsf = abs_points;
 
     double angle_temp;
     double radius_temp;
 
     // polar corners
-    for (int i=0; i<pol_points.rows(); i++)
+    for (int i=0; i<pol_pointsf.rows(); i++)
     {
-        pol_points(i,0) = abs_points(i,0) - robot_posef(0,0);
-        pol_points(i,1) = abs_points(i,1) - robot_posef(0,1);
-        radius_temp = sqrt( pow(pol_points(i,0),2) + pow(pol_points(i,1),2) );
-        angle_temp = atan2(pol_points(i,1) , pol_points(i,0));
+        pol_pointsf(i,0) = abs_points(i,0) - robot_posef(0,0);
+        pol_pointsf(i,1) = abs_points(i,1) - robot_posef(0,1);
+        radius_temp = sqrt( pow(pol_pointsf(i,0),2) + pow(pol_pointsf(i,1),2) );
+        angle_temp = atan2(pol_pointsf(i,1) , pol_pointsf(i,0));
         angle_temp = angle_temp * RAD2DEG;
         if (angle_temp < 0)
         {
@@ -319,9 +382,10 @@ void optimalHeadDirectionTv::obtainPolarCoordinates(yarp::sig::Matrix robot_pose
         if (angle_temp > 180 )
             angle_temp = angle_temp - 360;
 
-        pol_points(i,0) = radius_temp;
-        pol_points(i,1) = angle_temp;
+        pol_pointsf(i,0) = radius_temp;
+        pol_pointsf(i,1) = angle_temp;
     }
+    return pol_pointsf;
 }
 
 void optimalHeadDirectionTv::cleanNonRelevantPoints()
@@ -342,15 +406,29 @@ void optimalHeadDirectionTv::cleanNonRelevantPoints()
 
 void optimalHeadDirectionTv::futurePointsCalculation()
 {
-    //obtain absolute rovot position at time t
     yarp::sig::Matrix robot_pose_t;
-    robot_pose_t = robot_pose;
+    yarp::sig::Matrix pol_points_t;
 
-    //obtain polar coordinates
-    obtainPolarCoordinates(robot_pose_t);
+    int cont = 0;
+    for(int i=0; i<number_time_steps; i++)
+    {
+        //obtain absolute robot position at time t
+        robot_pose_t = robot_pose;
 
-    // clean non relevant points
-    cleanNonRelevantPoints();
+        //obtain polar coordinates at time t
+        pol_points_t = obtainPolarCoordinates(robot_pose_t);
 
+        //create a single matrix
+        pol_points.resize(pol_points_t.rows()*number_time_steps, 5);
+        for(int j=0; j<pol_points_t.rows(); j++)
+        {
+            pol_points(cont,0) = pol_points_t(j,0);
+            pol_points(cont,1) = pol_points_t(j,1);
+            pol_points(cont,2) = pol_points_t(j,2);
+            pol_points(cont,3) = pol_points_t(j,3);
+            pol_points(cont,4) = i; // save also the time index
+        }
+        cont++;
+    }
 }
 

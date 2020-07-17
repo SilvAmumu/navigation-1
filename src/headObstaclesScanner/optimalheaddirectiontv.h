@@ -26,9 +26,14 @@ using namespace yarp::os;
 #define M_PI 3.14159265
 #endif
 
+#ifndef RAD2DEG
+#define RAD2DEG (180.0 / M_PI);
+#endif
 
-const double RAD2DEG = 180.0 / M_PI;
-const double DEG2RAD = M_PI / 180.0;
+#ifndef DEG2RAD
+#define DEG2RAD (M_PI / 180.0);
+#endif
+
 
 
 
@@ -48,7 +53,7 @@ public:
 
     double camera_fov = 70;
     double max_head_rotation = 35;
-    double max_head_speed = 1000;
+    double max_head_speed = 25;
     double max_considered_radius = 3.5;
     double std_weight_absHeading = 0.1;
     double std_weight_corners = 1;
@@ -78,11 +83,11 @@ private:
 
     // VARIABLES
     yarp::sig::Matrix abs_points;  //r, t, type, weight (type: 1-corners , 2-objects, 3-waypoint)
-    yarp::sig::Matrix pol_points;  //r, t, type, weight
+    yarp::sig::Matrix pol_points;  //r, t, type, weight, time step
 
 
     // METHODS
-    void obtainPolarCoordinates(yarp::sig::Matrix robot_posef);
+    yarp::sig::Matrix obtainPolarCoordinates(yarp::sig::Matrix robot_posef);
 
     void cleanNonRelevantPoints(void);
 

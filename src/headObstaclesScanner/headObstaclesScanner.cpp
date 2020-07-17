@@ -34,6 +34,7 @@
 
 #include "cornerdetector.h"
 #include "optimalheaddirectionti.h"
+#include "optimalheaddirectiontv.h"
 
 #include <yarp/sig/Image.h>
 #include <yarp/sig/ImageDraw.h>
@@ -44,6 +45,14 @@
 
 #ifndef M_PI
 #define M_PI 3.14159265
+#endif
+
+#ifndef RAD2DEG
+#define RAD2DEG (180.0 / M_PI);
+#endif
+
+#ifndef DEG2RAD
+#define DEG2RAD (M_PI / 180.0);
 #endif
 
 #define TIMEOUT_MAX 100
@@ -326,11 +335,30 @@ class MyModule : public yarp::os::RFModule
             getTrajectory();
 
             // call the optimization
-            callOptimization();
+            callOptimizationTi();
 
             // look in the optimized direction
             lookRelativeAngle();
 
+        }
+
+        if (headModeName=="optimal_positioning_tv")
+        {
+            // get robot position
+            if (!getRobotPosition())
+                return false;
+
+            // get relative position of the corners
+            if (!getRelMapCorners())
+                return false;
+            // get trajectory (waypoints)
+            getTrajectory();
+
+            // call the optimization
+            callOptimizationTv();
+
+            // look in the optimized direction
+            lookRelativeAngle();
         }
 
         return true;
@@ -496,7 +524,7 @@ class MyModule : public yarp::os::RFModule
 
 
 
-        if ((headModeName=="trajectory") || (headModeName=="closer_corner") || (headModeName=="optimal_positioning"))
+        if ((headModeName=="trajectory") || (headModeName=="closer_corner") || (headModeName=="optimal_positioning") || (headModeName=="optimal_positioning_tv"))
         {
             // parameters for localization and navigation servers
 
@@ -562,7 +590,7 @@ class MyModule : public yarp::os::RFModule
             }
         }
 
-        if (headModeName=="closer_corner" || (headModeName=="optimal_positioning"))
+        if (headModeName=="closer_corner" || (headModeName=="optimal_positioning") || (headModeName=="optimal_positioning_tv"))
         {
             // read map
             if (head_group.check("map_name"))
@@ -858,9 +886,21 @@ class MyModule : public yarp::os::RFModule
 #endif
       }
 
-      bool callOptimization ()
+      bool callOptimizationTi ()
       {
           optimalHeadDirectionTi optiProb;
+
+          optiProb.robot_pose = robot_pose;
+          optiProb.abs_corners = abs_map_corners;
+          optiProb.abs_objects = abs_objects;
+          optiProb.abs_wayoints = abs_waypoints;
+          optiProb.solveProblem();
+          relative_commanded_angle = optiProb.optimal_head_direction;
+      }
+
+      bool callOptimizationTv ()
+      {
+          optimalHeadDirectionTv optiProb;
 
           optiProb.robot_pose = robot_pose;
           optiProb.abs_corners = abs_map_corners;

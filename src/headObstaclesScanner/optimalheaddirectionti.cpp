@@ -36,7 +36,7 @@ void optimalHeadDirectionTi::solveProblem()
     int constr_point_int_num = 0;
 
     constr_point_int_num = pol_points.rows() * 2;
-    constr_num = constr_point_int_num + 4; //DA SISTEMARE I $ CONSTRAINT AGGIUNTIVI !!!!!!!!!!!!!
+    constr_num = constr_point_int_num + 4;
     glp_add_rows(mip, constr_num);
 
 #ifdef DEBUG
