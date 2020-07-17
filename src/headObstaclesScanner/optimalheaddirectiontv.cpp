@@ -361,7 +361,8 @@ yarp::sig::Matrix optimalHeadDirectionTv::obtainPolarCoordinates(yarp::sig::Matr
         cont ++;
     }
 
-    yarp::sig::Matrix pol_pointsf = abs_points;
+    yarp::sig::Matrix pol_pointsf;
+    pol_pointsf= abs_points;
 
     double angle_temp;
     double radius_temp;
@@ -427,8 +428,8 @@ void optimalHeadDirectionTv::futurePointsCalculation()
             pol_points(cont,2) = pol_points_t(j,2);
             pol_points(cont,3) = pol_points_t(j,3);
             pol_points(cont,4) = i; // save also the time index
+            cont++;
         }
-        cont++;
     }
 }
 
