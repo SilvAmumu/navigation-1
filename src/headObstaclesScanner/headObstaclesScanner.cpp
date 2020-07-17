@@ -67,8 +67,8 @@ class MyModule : public yarp::os::RFModule
     // PARAMETERS
 
     // head behaviour default parameters
-    double head_speed = 30.0;
-    double rotation_range = 25.0;
+    double head_speed = 25.0;
+    double rotation_range = 35.0;
     double circle_range = 1;
     // devices default parameters
     std::string  m_remote_localization = "/localizationServer";
@@ -109,11 +109,14 @@ class MyModule : public yarp::os::RFModule
     Vector command;
     Vector tmp;
 
+    double relative_commanded_angle = 0;
+
     bool done_run;
     long int com_count = 0;
     int m_loc_timeout_counter = 0;
 
     yarp::sig::Matrix abs_waypoints;
+    yarp::sig::Matrix abs_objects;
     yarp::sig::Matrix rel_waypoints;
     yarp::sig::Matrix map_corners;
     vector<Point2f> opencv_corners;
@@ -324,6 +327,9 @@ class MyModule : public yarp::os::RFModule
 
             // call the optimization
             callOptimization();
+
+            // look in the optimized direction
+            lookRelativeAngle();
 
         }
 
@@ -816,15 +822,52 @@ class MyModule : public yarp::os::RFModule
 
       }
 
+      bool lookRelativeAngle()
+      {
+          double rel_angle = relative_commanded_angle;
+          // stop head when target is reached
+          m_iNav->getNavigationStatus(nav_status);
+          if ((nav_status == yarp::dev::Nav2D::NavigationStatusEnum::navigation_status_goal_reached) || nav_status == yarp::dev::Nav2D::NavigationStatusEnum::navigation_status_idle)
+              //rel_angle = 0;
+
+          // move robot head
+          command[0]=0;
+
+          if (rel_angle > 180 )
+              command[1]= rel_angle - 360;
+          else
+              command[1]= rel_angle;
+
+          //pos control mode: 7565168 ---- pos direct control mode: 1685286768
+
+          if (std::abs(encoders(1)-command(1)) < 3)
+          {
+              icontrolMode->setControlMode(1,VOCAB_CM_POSITION_DIRECT);
+              idirect->setPosition(1,command[1]);
+          }
+          else
+          {
+              icontrolMode->setControlMode(1,VOCAB_CM_POSITION);
+              ipos->positionMove(command.data());
+          }
+
+#ifdef DEBUG
+            std::cout << "LOOKING RELATIVE ANGLE:" << '\n';
+            std::cout << "point angle relative to robot head: " << rel_angle << '\n';
+            std::cout << "commanded angle: " << command[1] << '\n';
+#endif
+      }
+
       bool callOptimization ()
       {
           optimalHeadDirectionTi optiProb;
 
           optiProb.robot_pose = robot_pose;
           optiProb.abs_corners = abs_map_corners;
-          //optiProb.abs_objects = abs_objects;
+          optiProb.abs_objects = abs_objects;
           optiProb.abs_wayoints = abs_waypoints;
           optiProb.solveProblem();
+          relative_commanded_angle = optiProb.optimal_head_direction;
       }
 
 };

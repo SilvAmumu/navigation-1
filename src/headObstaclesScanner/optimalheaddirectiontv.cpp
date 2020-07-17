@@ -1,26 +1,26 @@
-#include "optimalheaddirectionti.h"
+#include "optimalheaddirectiontv.h"
 
 #define DEBUG
 
 using namespace std::chrono;
 
-optimalHeadDirectionTi::optimalHeadDirectionTi()
+optimalHeadDirectionTv::optimalHeadDirectionTv()
 {
 
 }
 
-void optimalHeadDirectionTi::solveProblem()
+void optimalHeadDirectionTv::solveProblem()
 {
     // get data
-    
-    
+
+
     // set some variables
-    
+
     double M_big = camera_fov +360;
     double M_big2 = max_head_rotation * 3;
 
     //obtain polar coordinates
-    obtainPolarCoordinates();
+    obtainPolarCoordinates(robot_pose);
 
     // clean non relevant points
     cleanNonRelevantPoints();
@@ -267,9 +267,9 @@ void optimalHeadDirectionTi::solveProblem()
 #endif
 }
 
-void optimalHeadDirectionTi::obtainPolarCoordinates()
+void optimalHeadDirectionTv::obtainPolarCoordinates(yarp::sig::Matrix robot_posef)
 {
-    // calculate polar coordinates in the ROBOT reference system  
+    // calculate polar coordinates in the ROBOT reference system
     abs_points.resize(abs_corners.rows() + abs_wayoints.rows() + abs_objects.rows(), 4);
 
     int cont = 0;
@@ -306,8 +306,8 @@ void optimalHeadDirectionTi::obtainPolarCoordinates()
     // polar corners
     for (int i=0; i<pol_points.rows(); i++)
     {
-        pol_points(i,0) = abs_points(i,0) - robot_pose(0,0);
-        pol_points(i,1) = abs_points(i,1) - robot_pose(0,1);
+        pol_points(i,0) = abs_points(i,0) - robot_posef(0,0);
+        pol_points(i,1) = abs_points(i,1) - robot_posef(0,1);
         radius_temp = sqrt( pow(pol_points(i,0),2) + pow(pol_points(i,1),2) );
         angle_temp = atan2(pol_points(i,1) , pol_points(i,0));
         angle_temp = angle_temp * RAD2DEG;
@@ -315,7 +315,7 @@ void optimalHeadDirectionTi::obtainPolarCoordinates()
         {
             angle_temp = angle_temp + 360;
         }
-        angle_temp = angle_temp - robot_pose(0,2);
+        angle_temp = angle_temp - robot_posef(0,2);
         if (angle_temp > 180 )
             angle_temp = angle_temp - 360;
 
@@ -324,7 +324,7 @@ void optimalHeadDirectionTi::obtainPolarCoordinates()
     }
 }
 
-void optimalHeadDirectionTi::cleanNonRelevantPoints()
+void optimalHeadDirectionTv::cleanNonRelevantPoints()
 {
     // this function removes points out of reach from the RGBD fov or too far from the robot (to make MILP lighter)
     for (int i=0; i<pol_points.rows(); i++)
@@ -339,3 +339,18 @@ void optimalHeadDirectionTi::cleanNonRelevantPoints()
             pol_points.removeRows(i,1);
     }
 }
+
+void optimalHeadDirectionTv::futurePointsCalculation()
+{
+    //obtain absolute rovot position at time t
+    yarp::sig::Matrix robot_pose_t;
+    robot_pose_t = robot_pose;
+
+    //obtain polar coordinates
+    obtainPolarCoordinates(robot_pose_t);
+
+    // clean non relevant points
+    cleanNonRelevantPoints();
+
+}
+
