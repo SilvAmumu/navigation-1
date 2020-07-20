@@ -48,7 +48,7 @@ public:
     yarp::sig::Matrix robot_pose;
     yarp::sig::Matrix abs_corners;     //x, y, corner weight
     yarp::sig::Matrix abs_objects;     //x, y, object weight
-    yarp::sig::Matrix abs_wayoints;    //x, y, waypoint weight
+    yarp::sig::Matrix abs_waypoints;    //x, y, waypoint weight
 
     double camera_fov = 70;
     double max_head_rotation = 35;

@@ -43,7 +43,7 @@ void optimalHeadDirectionTi::solveProblem()
     cout << "MILP OPTIMIZATION: " << '\n';
     cout << "abs_corners.rows(): " << abs_corners.rows() << '\n';
     cout << "abs_objects.rows(): " << abs_objects.rows() << '\n';
-    cout << "abs_wayoints.rows(): " << abs_wayoints.rows() << '\n';
+    cout << "abs_waypoints.rows(): " << abs_waypoints.rows() << '\n';
     cout << "pol_points.rows(): " << pol_points.rows() << '\n';
     cout << pol_points.toString() << '\n';
 #endif
@@ -270,7 +270,7 @@ void optimalHeadDirectionTi::solveProblem()
 void optimalHeadDirectionTi::obtainPolarCoordinates()
 {
     // calculate polar coordinates in the ROBOT reference system  
-    abs_points.resize(abs_corners.rows() + abs_wayoints.rows() + abs_objects.rows(), 4);
+    abs_points.resize(abs_corners.rows() + abs_waypoints.rows() + abs_objects.rows(), 4);
 
     int cont = 0;
     for (int i=0; i<abs_corners.rows(); i++)
@@ -289,10 +289,10 @@ void optimalHeadDirectionTi::obtainPolarCoordinates()
         abs_points(cont,3) = -1;
         cont ++;
     }
-    for (int i=0; i<abs_wayoints.rows(); i++)
+    for (int i=0; i<abs_waypoints.rows(); i++)
     {
-        abs_points(cont,0) = abs_wayoints(i,0);
-        abs_points(cont,1) = abs_wayoints(i,1);
+        abs_points(cont,0) = abs_waypoints(i,0);
+        abs_points(cont,1) = abs_waypoints(i,1);
         abs_points(cont,2) = 3;
         abs_points(cont,3) = -1;
         cont ++;

@@ -43,9 +43,9 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
     cout << "MILP OPTIMIZATION: " << '\n';
     cout << "abs_corners.rows(): " << abs_corners.rows() << '\n';
     cout << "abs_objects.rows(): " << abs_objects.rows() << '\n';
-    cout << "abs_wayoints.rows(): " << abs_wayoints.rows() << '\n';
+    cout << "abs_wayoints.rows(): " << abs_waypoints.rows() << '\n';
     cout << "pol_points.rows(): " << pol_points.rows() << '\n';
-    cout << pol_points.toString() << '\n';
+   // cout << pol_points.toString() << '\n';   //PRINT ALL THE POINTS, very long output
 #endif
 
     for(int i=0; i<pol_points.rows(); i++)
@@ -84,16 +84,30 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
         glp_set_row_name(mip, constr_point_int_num + 4 + 6*i, constr_name.c_str());
         glp_set_row_bnds(mip, constr_point_int_num + 4 + 6*i, GLP_UP, 0.0, 0.0);
 
-        //speedt_1
-        constr_name = "speed" + std::to_string(i+1) + "_1";
-        glp_set_row_name(mip, constr_point_int_num + 5 + 6*i, constr_name.c_str());
-        glp_set_row_bnds(mip, constr_point_int_num + 5 + 6*i, GLP_LO, -max_head_speed*time_step, 0.0);
+        if(i==0)  //if first point set initial head position
+        {
+            //speedt_1
+            constr_name = "speed" + std::to_string(i+1) + "_1";
+            glp_set_row_name(mip, constr_point_int_num + 5 + 6*i, constr_name.c_str());
+            glp_set_row_bnds(mip, constr_point_int_num + 5 + 6*i, GLP_LO, -max_head_speed*time_step+initial_head_position, 0.0);
 
-        //speedt_2
-        constr_name = "speed" + std::to_string(i+1) + "_2";
-        glp_set_row_name(mip, constr_point_int_num + 6 + 6*i, constr_name.c_str());
-        glp_set_row_bnds(mip, constr_point_int_num + 6 + 6*i, GLP_UP, 0.0, max_head_speed*time_step);
+            //speedt_2
+            constr_name = "speed" + std::to_string(i+1) + "_2";
+            glp_set_row_name(mip, constr_point_int_num + 6 + 6*i, constr_name.c_str());
+            glp_set_row_bnds(mip, constr_point_int_num + 6 + 6*i, GLP_UP, 0.0, max_head_speed*time_step+initial_head_position);
+        }
+        else
+        {
+            //speedt_1
+            constr_name = "speed" + std::to_string(i+1) + "_1";
+            glp_set_row_name(mip, constr_point_int_num + 5 + 6*i, constr_name.c_str());
+            glp_set_row_bnds(mip, constr_point_int_num + 5 + 6*i, GLP_LO, -max_head_speed*time_step, 0.0);
 
+            //speedt_2
+            constr_name = "speed" + std::to_string(i+1) + "_2";
+            glp_set_row_name(mip, constr_point_int_num + 6 + 6*i, constr_name.c_str());
+            glp_set_row_bnds(mip, constr_point_int_num + 6 + 6*i, GLP_UP, 0.0, max_head_speed*time_step);
+        }
     }
 
 
@@ -112,11 +126,11 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
     for(int i=0; i<states_point_int_num; i++)
     {
         if (pol_points(i,2) == 1)
-            states_name = "Zc" + std::to_string(i);
+            states_name = "Zc_" + std::to_string(i) + "_" + std::to_string(pol_points(i,4));
         if (pol_points(i,2) == 2)
-            states_name = "Zo" + std::to_string(i);
+            states_name = "Zo_" + std::to_string(i) + "_" + std::to_string(pol_points(i,4));
         if (pol_points(i,2) == 3)
-            states_name = "Zw" + std::to_string(i);
+            states_name = "Zw_" + std::to_string(i) + "_" + std::to_string(pol_points(i,4));
 
         glp_set_col_name(mip, i+1, states_name.c_str());
         glp_set_col_bnds(mip, i+1, GLP_DB, 0, 1);
@@ -141,25 +155,27 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
     }
 
     //set problem matrix
-    int matrix_elements = constr_point_int_num * 2 + 10*number_time_steps +4*number_time_steps;  //2 each constraint + 10 for adjoint per each time step + 4 for speed limit per each time step
+    int matrix_elements = constr_point_int_num * 2 + 10*number_time_steps +4*number_time_steps - 2;  //2 each constraint + 10 for adjoint per each time step + 4 for speed limit per each time step -2 for initial Ht-1 step for speed
     int cont =0;
     int ia[1+matrix_elements];
     int ja[1+matrix_elements];
     double ar[1+matrix_elements];
+    int time_index;
 
 
     for(int i=0; i<pol_points.rows(); i++)
     {
-        // H index cUPi
+        time_index = pol_points(i,4);
+        // Ht index cUPi
         cont++;
         ia[cont] = 2*i + 1;
-        ja[cont] = states_point_int_num + 1;
+        ja[cont] = states_point_int_num + 1 + time_index*3;
         ar[cont] = 1;
 
-        // H index cLOi
+        // Ht index cLOi
         cont++;
         ia[cont] = 2*i + 2;
-        ja[cont] = states_point_int_num + 1;
+        ja[cont] = states_point_int_num + 1 + time_index*3;;
         ar[cont] = 1;
 
         // Xi index cUPi
@@ -233,6 +249,7 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
         ja[cont] = states_point_int_num + 2 + 3*i;
         ar[cont] = -1;
 
+
         //speedt_1 Ht
         cont++;
         ia[cont] = constr_point_int_num + 5 + 6*i;
@@ -240,13 +257,20 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
         ar[cont] = 1;
 
         //speedt_1 Ht-1
-        cont++;
-        ia[cont] = constr_point_int_num + 5 + 6*i;
         if (i==0)
-            ja[cont] = states_point_int_num + 1 + 3*i;
+        {
+            //cont++;
+            //ia[cont] = constr_point_int_num + 5 + 6*i;
+            //ja[cont] = states_point_int_num + 1 + 3*i;
+            //ar[cont] = -1;
+        }
         else
+        {
+            cont++;
+            ia[cont] = constr_point_int_num + 5 + 6*i;
             ja[cont] = states_point_int_num + 1 + 3*(i-1);
-        ar[cont] = -1;
+            ar[cont] = -1;
+        }
 
         //speedt_2 Ht
         cont++;
@@ -255,13 +279,20 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
         ar[cont] = 1;
 
         //speedt_2 Ht-1
-        cont++;
-        ia[cont] = constr_point_int_num + 6 + 6*i;
         if (i==0)
-            ja[cont] = states_point_int_num + 1 + 3*i;
+        {
+            //cont++;
+            //ia[cont] = constr_point_int_num + 6 + 6*i;
+            //ja[cont] = states_point_int_num + 1 + 3*i;
+            //ar[cont] = -1;
+        }
         else
+        {
+            cont++;
+            ia[cont] = constr_point_int_num + 6 + 6*i;
             ja[cont] = states_point_int_num + 1 + 3*(i-1);
-        ar[cont] = -1;
+            ar[cont] = -1;
+        }
     }
 
     glp_load_matrix(mip, matrix_elements, ia, ja, ar);
@@ -301,6 +332,7 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
     glp_iocp parm;
     glp_init_iocp(&parm);
     parm.presolve = GLP_ON;
+    parm.tm_lim = time_limit;
 
     auto start = std::chrono::high_resolution_clock::now();
     int err = glp_intopt(mip, &parm);
@@ -325,15 +357,22 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
     cout << "MILP solution: " << '\n';
     for(int i=0; i<states_num; i++)
     {
-        cout << "X" << i << ": " << solutions[i] << '\n';
+        // cout << "X" << i << ": " << solutions[i] << '\n'; //PRINT ALL THE POINTS, very long output
     }
+    for(int i=0; i<number_time_steps; i++)
+    {
+         //cout << "H" << i << ": " << solutions[states_point_int_num + 1 + 3*i] << '\n';
+         cout << glp_get_col_name(mip,states_point_int_num + 1 + 3*i) << ": " << solutions[states_point_int_num + 1 + 3*i] << '\n';
+    }
+    cout << "Initial head position: " << initial_head_position << '\n';
+
 #endif
 }
 
 yarp::sig::Matrix optimalHeadDirectionTv::obtainPolarCoordinates(yarp::sig::Matrix robot_posef)
 {
     // calculate polar coordinates in the ROBOT reference system
-    abs_points.resize(abs_corners.rows() + abs_wayoints.rows() + abs_objects.rows(), 4);
+    abs_points.resize(abs_corners.rows() + abs_waypoints.rows() + abs_objects.rows(), 4);
 
     int cont = 0;
     for (int i=0; i<abs_corners.rows(); i++)
@@ -352,17 +391,17 @@ yarp::sig::Matrix optimalHeadDirectionTv::obtainPolarCoordinates(yarp::sig::Matr
         abs_points(cont,3) = -1;
         cont ++;
     }
-    for (int i=0; i<abs_wayoints.rows(); i++)
+    for (int i=0; i<abs_waypoints.rows(); i++)
     {
-        abs_points(cont,0) = abs_wayoints(i,0);
-        abs_points(cont,1) = abs_wayoints(i,1);
+        abs_points(cont,0) = abs_waypoints(i,0);
+        abs_points(cont,1) = abs_waypoints(i,1);
         abs_points(cont,2) = 3;
         abs_points(cont,3) = -1;
         cont ++;
     }
 
     yarp::sig::Matrix pol_pointsf;
-    pol_pointsf= abs_points;
+    pol_pointsf = abs_points;
 
     double angle_temp;
     double radius_temp;
@@ -409,6 +448,7 @@ void optimalHeadDirectionTv::futurePointsCalculation()
 {
     yarp::sig::Matrix robot_pose_t;
     yarp::sig::Matrix pol_points_t;
+    pol_points.resize((abs_corners.rows() + abs_waypoints.rows() + abs_objects.rows())*number_time_steps, 5);
 
     int cont = 0;
     for(int i=0; i<number_time_steps; i++)
@@ -420,14 +460,13 @@ void optimalHeadDirectionTv::futurePointsCalculation()
         pol_points_t = obtainPolarCoordinates(robot_pose_t);
 
         //create a single matrix
-        pol_points.resize(pol_points_t.rows()*number_time_steps, 5);
         for(int j=0; j<pol_points_t.rows(); j++)
         {
-            pol_points(cont,0) = pol_points_t(j,0);
-            pol_points(cont,1) = pol_points_t(j,1);
-            pol_points(cont,2) = pol_points_t(j,2);
-            pol_points(cont,3) = pol_points_t(j,3);
-            pol_points(cont,4) = i; // save also the time index
+            pol_points(cont,0) = pol_points_t(j,0);     // x
+            pol_points(cont,1) = pol_points_t(j,1);     // y
+            pol_points(cont,2) = pol_points_t(j,2);     // type
+            pol_points(cont,3) = pol_points_t(j,3);     // weight
+            pol_points(cont,4) = i;                     // time index
             cont++;
         }
     }

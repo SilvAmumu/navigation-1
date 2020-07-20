@@ -846,6 +846,7 @@ class MyModule : public yarp::os::RFModule
             std::cout << "point angle in robot reference system: " << abs_angle << '\n';
             std::cout << "point angle relative to robot head: " << rel_angle << '\n';
             std::cout << "commanded angle: " << command[1] << '\n';
+            std::cout << "actual angle: " << encoders[1] << '\n';
 #endif
 
       }
@@ -883,6 +884,7 @@ class MyModule : public yarp::os::RFModule
             std::cout << "LOOKING RELATIVE ANGLE:" << '\n';
             std::cout << "point angle relative to robot head: " << rel_angle << '\n';
             std::cout << "commanded angle: " << command[1] << '\n';
+            std::cout << "actual angle: " << encoders[1] << '\n';
 #endif
       }
 
@@ -893,7 +895,7 @@ class MyModule : public yarp::os::RFModule
           optiProb.robot_pose = robot_pose;
           optiProb.abs_corners = abs_map_corners;
           optiProb.abs_objects = abs_objects;
-          optiProb.abs_wayoints = abs_waypoints;
+          optiProb.abs_waypoints = abs_waypoints;
           optiProb.solveProblem();
           relative_commanded_angle = optiProb.optimal_head_direction;
       }
@@ -905,7 +907,10 @@ class MyModule : public yarp::os::RFModule
           optiProb.robot_pose = robot_pose;
           optiProb.abs_corners = abs_map_corners;
           optiProb.abs_objects = abs_objects;
-          optiProb.abs_wayoints = abs_waypoints;
+          optiProb.abs_waypoints = abs_waypoints;
+          optiProb.abs_trajectory = abs_waypoints;
+          optiProb.initial_head_position = encoders(1);
+
           optiProb.solveProblem();
           relative_commanded_angle = optiProb.optimal_head_direction;
       }
