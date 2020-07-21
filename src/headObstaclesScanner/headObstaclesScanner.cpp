@@ -48,11 +48,11 @@
 #endif
 
 #ifndef RAD2DEG
-#define RAD2DEG (180.0 / M_PI);
+#define RAD2DEG (180.0 / M_PI)
 #endif
 
 #ifndef DEG2RAD
-#define DEG2RAD (M_PI / 180.0);
+#define DEG2RAD (M_PI / 180.0)
 #endif
 
 #define TIMEOUT_MAX 100
@@ -68,7 +68,7 @@ using namespace yarp::os;
 class MyModule : public yarp::os::RFModule
 {
     // FAST SETUP:
-        // ./headObstaclesScanner --GENERAL::robot R1 --GENERAL::head_mode closer_corner
+        // ./headObstaclesScanner --GENERAL::robot R1 --GENERAL::head_mode closer_corner  --GENERAL::autoconnect
         // to see image debug:
         // yarpview --name /headObstaclesScanner/debug:i
         // yarp connect /headObstaclesScanner/rgb:o /headObstaclesScanner/debug:i
@@ -87,6 +87,7 @@ class MyModule : public yarp::os::RFModule
     std::string  headModeName = "sweep";
     //std::string  map_name = "/dockersharedfolder/testopencv/test4/squirico_map.png";
     std::string  map_name = "/dockersharedfolder/testopencv/test4/mymap_isaac3.png";
+    std::string m_port_local_trajectory_name;
     double  map_resolution = 0.02;
 
 
@@ -141,7 +142,10 @@ class MyModule : public yarp::os::RFModule
     Mat copy;
     Mat src, src_gray;
 
-    BufferedPort<ImageOf<PixelRgb> > imagePort;
+    yarp::sig::Matrix lqrTraj;
+
+    yarp::os::BufferedPort<ImageOf<PixelRgb> > imagePort;
+    yarp::os::BufferedPort<yarp::os::Bottle> m_port_local_trajectory;
 
     int closer_point_index = 0;
 
@@ -354,11 +358,17 @@ class MyModule : public yarp::os::RFModule
             // get trajectory (waypoints)
             getTrajectory();
 
+            // get trajectory (LQR)
+            lqrTraj = getLqrTrajectory();
+
             // call the optimization
             callOptimizationTv();
 
             // look in the optimized direction
             lookRelativeAngle();
+
+            // draw image
+            drawImage();
         }
 
         return true;
@@ -617,6 +627,23 @@ class MyModule : public yarp::os::RFModule
             std::cout << "relative corners: \n " << rel_map_corners.toString() << '\n';
         }
 
+        if (headModeName=="optimal_positioning_tv")
+        {
+            // open port for LQR trajectory
+            m_port_local_trajectory_name = m_local_name_prefix + string("/local_trajectory:i");
+            m_port_local_trajectory.open(m_port_local_trajectory_name);
+
+            if (general_group.check("autoconnect"))
+            {
+                bool ret = true;
+                ret &= yarp::os::Network::connect("/yarpbridge/differential_trajectory_plan:o", m_port_local_trajectory_name);
+                if (!ret)
+                {
+                    yError() << "Autoconnect failed";
+                    return false;
+                }
+            }
+        }
 
         return true;
     }
@@ -635,9 +662,11 @@ class MyModule : public yarp::os::RFModule
         robotDevice->close();
         handlerPort.close();
 
-
         if (m_pNav.isValid()) m_pNav.close();
         m_iNav = nullptr;
+
+        m_port_local_trajectory.interrupt();
+        m_port_local_trajectory.close();
 
 
         return true;
@@ -785,10 +814,41 @@ class MyModule : public yarp::os::RFModule
 
           // Draw robot position
           Point2f opencv_robot_pos;
+          Point2f opencv_robot_pos_2;
           opencv_robot_pos.x = robot_pose(0,1)/map_resolution;
           opencv_robot_pos.y = robot_pose(0,0)/map_resolution;
 
+          opencv_robot_pos_2.x = (robot_pose(0,1) + 0.5*sin(robot_pose(0,2)*DEG2RAD))/map_resolution;
+          opencv_robot_pos_2.y = (robot_pose(0,0) + 0.5*cos(robot_pose(0,2)*DEG2RAD))/map_resolution;
+
           circle( copy, opencv_robot_pos, r*2, Scalar(0, 0, 255), -1, 8, 0 );
+          line(copy, opencv_robot_pos, opencv_robot_pos_2, Scalar(0, 0, 255),2,8,0);
+
+
+          cout << "lqrTraj.rows(): " << lqrTraj.rows() << '\n' ;
+
+          // draw lqr path
+          Point2f opencv_traj_1;
+          Point2f opencv_traj_2;
+          if(lqrTraj.rows()>1)
+          {
+              for(int i=1; i<lqrTraj.rows(); i++)
+              {
+//                  opencv_traj_1.x = lqrTraj(i,1)/map_resolution;
+//                  opencv_traj_1.y = lqrTraj(i,0)/map_resolution;
+//                  opencv_traj_2.x = lqrTraj(i-1,1)/map_resolution;
+//                  opencv_traj_2.y = lqrTraj(i-1,0)/map_resolution;
+                  opencv_traj_1.x = (robot_pose(0,1) - (lqrTraj(i,0) - lqrTraj(0,0)) )/map_resolution;
+                  opencv_traj_1.y = (robot_pose(0,0) + (lqrTraj(i,1) - lqrTraj(0,1)) )/map_resolution;
+                  opencv_traj_2.x = (robot_pose(0,1) - (lqrTraj(i-1,0) - lqrTraj(0,0)) )/map_resolution;
+                  opencv_traj_2.y = (robot_pose(0,0) + (lqrTraj(i-1,1) - lqrTraj(0,1)) )/map_resolution;
+
+                  cv::line(copy, opencv_traj_1, opencv_traj_2, Scalar(0, 255, 0),1,8,0);
+                  //cvLine(copy, opencv_robot_pos, opencv_robot_pos_2, Scalar(0, 255, 0));
+
+                  cout << "opencv_robot_pos_ " << i << ": " <<  opencv_traj_1.x << " " << opencv_traj_1.y << " " << opencv_traj_2.x << " " << opencv_traj_2.y << '\n';
+              }
+          }
 
 
           // Send image to the door
@@ -908,11 +968,45 @@ class MyModule : public yarp::os::RFModule
           optiProb.abs_corners = abs_map_corners;
           optiProb.abs_objects = abs_objects;
           optiProb.abs_waypoints = abs_waypoints;
-          optiProb.abs_trajectory = abs_waypoints;
+          optiProb.abs_trajectory = lqrTraj;
           optiProb.initial_head_position = encoders(1);
 
           optiProb.solveProblem();
           relative_commanded_angle = optiProb.optimal_head_direction;
+      }
+
+      yarp::sig::Matrix getLqrTrajectory ()
+      {
+          yarp::sig::Matrix m_lqrTraj;
+          yarp::os::Bottle* trajectory = m_port_local_trajectory.read(false);
+          if (trajectory)
+          {
+              string frame = trajectory->get(0).asString();
+              m_lqrTraj.resize(trajectory->size()-1,6);
+              for (size_t i = 1; i < trajectory->size(); i++)
+              {
+                  Bottle* list_traj = trajectory->get(i).asList();
+                  m_lqrTraj(i-1,0) = list_traj->get(0).asFloat64(); // x
+                  m_lqrTraj(i-1,1) = list_traj->get(1).asFloat64(); // y
+                  m_lqrTraj(i-1,2) = list_traj->get(2).asFloat64(); // theta
+                  m_lqrTraj(i-1,3) = list_traj->get(3).asFloat64(); // vel x
+                  m_lqrTraj(i-1,4) = list_traj->get(4).asFloat64(); // vel y
+                  m_lqrTraj(i-1,5) = list_traj->get(5).asFloat64(); // vel theta
+                  m_lqrTraj(i-1,6) = list_traj->get(6).asFloat64(); // time stamp
+              }
+
+//              for(int i=0; i<m_lqrTraj.rows(); i++)
+//              {
+//                  m_lqrTraj(i,1) = (robot_pose(0,1) - (m_lqrTraj(i,0) - m_lqrTraj(0,0)) );
+//                  m_lqrTraj(i,0) = (robot_pose(0,0) + (m_lqrTraj(i,1) - m_lqrTraj(0,1)) );
+//              }
+
+          }
+          else
+          {
+              m_lqrTraj.resize(0,0);
+          }
+          return m_lqrTraj;
       }
 
 };

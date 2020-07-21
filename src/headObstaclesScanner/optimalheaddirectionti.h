@@ -28,11 +28,11 @@ using namespace yarp::os;
 
 
 #ifndef RAD2DEG
-#define RAD2DEG (180.0 / M_PI);
+#define RAD2DEG (180.0 / M_PI)
 #endif
 
 #ifndef DEG2RAD
-#define DEG2RAD (M_PI / 180.0);
+#define DEG2RAD (M_PI / 180.0)
 #endif
 
 
