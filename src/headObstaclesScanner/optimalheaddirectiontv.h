@@ -61,8 +61,8 @@ public:
     double std_weight_objects = 4;
     double std_weight_waypoints = 4;
     double time_step = 0.5;
-    double number_time_steps = 8;
-    int time_limit = 500;
+    double number_time_steps = 1;
+    int opti_time_limit = 400;
 
 
 
@@ -86,6 +86,7 @@ private:
     // VARIABLES
     yarp::sig::Matrix abs_points;  //r, t, type, weight (type: 1-corners , 2-objects, 3-waypoint)
     yarp::sig::Matrix pol_points;  //r, t, type, weight, time step
+    double trajectory_time;
 
 
     // METHODS
@@ -94,6 +95,8 @@ private:
     void cleanNonRelevantPoints(void);
 
     void futurePointsCalculation(void);
+
+    yarp::sig::Matrix futureRobotPositions(yarp::sig::Matrix m_robot_pose, yarp::sig::Matrix m_abs_trajectory);
 
 };
 

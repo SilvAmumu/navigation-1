@@ -808,7 +808,7 @@ class MyModule : public yarp::os::RFModule
 
           int r = 4;
           for( int i = 0; i < opencv_corners.size(); i++ )
-             { circle( copy, opencv_corners[i], r, Scalar(255, 0, 0), -1, 8, 0 ); }
+          {circle( copy, opencv_corners[i], r, Scalar(255, 0, 0), -1, 8, 0 ); }
 
           circle( copy, opencv_corners[closer_point_index], r, Scalar(0, 255, 0), -1, 8, 0 );  // closer corner has a different color
 
@@ -824,30 +824,43 @@ class MyModule : public yarp::os::RFModule
           circle( copy, opencv_robot_pos, r*2, Scalar(0, 0, 255), -1, 8, 0 );
           line(copy, opencv_robot_pos, opencv_robot_pos_2, Scalar(0, 0, 255),2,8,0);
 
-
+#ifdef DEBUG
           cout << "lqrTraj.rows(): " << lqrTraj.rows() << '\n' ;
-
+#endif
           // draw lqr path
           Point2f opencv_traj_1;
           Point2f opencv_traj_2;
           if(lqrTraj.rows()>1)
           {
+              int count_dir = 0;
               for(int i=1; i<lqrTraj.rows(); i++)
               {
-//                  opencv_traj_1.x = lqrTraj(i,1)/map_resolution;
-//                  opencv_traj_1.y = lqrTraj(i,0)/map_resolution;
-//                  opencv_traj_2.x = lqrTraj(i-1,1)/map_resolution;
-//                  opencv_traj_2.y = lqrTraj(i-1,0)/map_resolution;
-                  opencv_traj_1.x = (robot_pose(0,1) - (lqrTraj(i,0) - lqrTraj(0,0)) )/map_resolution;
-                  opencv_traj_1.y = (robot_pose(0,0) + (lqrTraj(i,1) - lqrTraj(0,1)) )/map_resolution;
-                  opencv_traj_2.x = (robot_pose(0,1) - (lqrTraj(i-1,0) - lqrTraj(0,0)) )/map_resolution;
-                  opencv_traj_2.y = (robot_pose(0,0) + (lqrTraj(i-1,1) - lqrTraj(0,1)) )/map_resolution;
-
+                  //draw trajectory
+                  opencv_traj_1.x = lqrTraj(i,1) / map_resolution;
+                  opencv_traj_1.y = lqrTraj(i,0) / map_resolution;
+                  opencv_traj_2.x = lqrTraj(i-1,1) / map_resolution;
+                  opencv_traj_2.y = lqrTraj(i-1,0) / map_resolution;
                   cv::line(copy, opencv_traj_1, opencv_traj_2, Scalar(0, 255, 0),1,8,0);
-                  //cvLine(copy, opencv_robot_pos, opencv_robot_pos_2, Scalar(0, 255, 0));
 
-                  cout << "opencv_robot_pos_ " << i << ": " <<  opencv_traj_1.x << " " << opencv_traj_1.y << " " << opencv_traj_2.x << " " << opencv_traj_2.y << '\n';
+                  count_dir = count_dir + 5;
+                  if(count_dir< lqrTraj.rows() )
+                  {
+                      //draw orientation
+                      opencv_traj_1.x = lqrTraj(count_dir-1,1) / map_resolution;
+                      opencv_traj_1.y = lqrTraj(count_dir-1,0) / map_resolution;
+                      opencv_traj_2.x = (lqrTraj(count_dir-1,1) + 0.5*sin(lqrTraj(count_dir-1,2)*DEG2RAD))/map_resolution;
+                      opencv_traj_2.y = (lqrTraj(count_dir-1,0) + 0.5*cos(lqrTraj(count_dir-1,2)*DEG2RAD))/map_resolution;
+                      cv::line(copy, opencv_traj_1, opencv_traj_2, Scalar(255, 0, 0),1,8,0);
+                  }
               }
+              // draw first segment (proportional to speed)
+              opencv_traj_1.x = ((lqrTraj(1,1) - robot_pose(0,1))*30 + robot_pose(0,1)) / map_resolution;
+              opencv_traj_1.y = ((lqrTraj(1,0) - robot_pose(0,0))*30 + robot_pose(0,0)) / map_resolution;
+              opencv_traj_2.x = lqrTraj(0,1) / map_resolution;
+              opencv_traj_2.y = lqrTraj(0,0) / map_resolution;
+              cv::line(copy, opencv_traj_1, opencv_traj_2, Scalar(255, 0, 0),1,8,0);
+
+
           }
 
 
@@ -978,10 +991,12 @@ class MyModule : public yarp::os::RFModule
       yarp::sig::Matrix getLqrTrajectory ()
       {
           yarp::sig::Matrix m_lqrTraj;
+          yarp::sig::Matrix m_lqrTraj_2;
           yarp::os::Bottle* trajectory = m_port_local_trajectory.read(false);
           if (trajectory)
           {
               string frame = trajectory->get(0).asString();
+              m_lqrTraj_2.resize(trajectory->size()-1,6);
               m_lqrTraj.resize(trajectory->size()-1,6);
               for (size_t i = 1; i < trajectory->size(); i++)
               {
@@ -995,18 +1010,33 @@ class MyModule : public yarp::os::RFModule
                   m_lqrTraj(i-1,6) = list_traj->get(6).asFloat64(); // time stamp
               }
 
-//              for(int i=0; i<m_lqrTraj.rows(); i++)
-//              {
-//                  m_lqrTraj(i,1) = (robot_pose(0,1) - (m_lqrTraj(i,0) - m_lqrTraj(0,0)) );
-//                  m_lqrTraj(i,0) = (robot_pose(0,0) + (m_lqrTraj(i,1) - m_lqrTraj(0,1)) );
-//              }
+
+              // recalculate trajectory aligning robot heading and first trajectory segment
+              float rel_angle = atan2(m_lqrTraj(1,1) - m_lqrTraj(0,1),m_lqrTraj(1,0) - m_lqrTraj(0,0))*RAD2DEG;
+              rel_angle = (robot_pose(0,2) - rel_angle) * DEG2RAD;
+
+              int k = 1;
+              for(int i=0; i<m_lqrTraj.rows(); i++)
+              {
+                  m_lqrTraj_2(i,0) = (robot_pose(0,0) + ((m_lqrTraj(i,0) - k*m_lqrTraj(0,0))*cos(rel_angle) - (m_lqrTraj(i,1)- k*m_lqrTraj(0,1))*sin(rel_angle)));
+                  m_lqrTraj_2(i,1) = (robot_pose(0,1) + ((m_lqrTraj(i,0) - k*m_lqrTraj(0,0))*sin(rel_angle) + (m_lqrTraj(i,1) - k*m_lqrTraj(0,1))*cos(rel_angle)));
+              }
+
+              // calcculate absolute heading
+              for(int i=1; i<m_lqrTraj.rows(); i++)
+              {
+                   m_lqrTraj_2(i-1,2) = atan2(m_lqrTraj_2(i,1) - m_lqrTraj_2(i-1,1) , m_lqrTraj_2(i,0) - m_lqrTraj_2(i-1,0))*RAD2DEG;
+                   if (m_lqrTraj_2(i-1,2) < 0)
+                       m_lqrTraj_2(i-1,2) = m_lqrTraj_2(i-1,2) + 360;
+              }
+              m_lqrTraj_2(m_lqrTraj.rows()-1,2) = m_lqrTraj_2(m_lqrTraj.rows()-2,2);
 
           }
           else
           {
-              m_lqrTraj.resize(0,0);
+              m_lqrTraj_2.resize(0,0);
           }
-          return m_lqrTraj;
+          return m_lqrTraj_2;
       }
 
 };

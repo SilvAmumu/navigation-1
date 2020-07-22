@@ -13,24 +13,45 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
 {
     // get data
 
+    // set time step and numbers of time step according to available trajectory
+    if(abs_trajectory.rows() < 1)
+    {
+        trajectory_time = 0;
+        number_time_steps = 1;
+    }
+    else
+    {
+        trajectory_time = abs_trajectory(abs_trajectory.rows(),6) - abs_trajectory(0,6);
+        while((trajectory_time < number_time_steps * time_step) && (number_time_steps > 1))
+        {
+            number_time_steps = number_time_steps - 1;
+        }
+    }
+
+    // normalize time to 0
+    for(int i=0; i<abs_trajectory.rows(); i++)
+    {
+        abs_trajectory(i,6) = abs_trajectory(i,6) - abs_trajectory(0,6);
+    }
+
 
     // set some variables
 
-    double M_big = camera_fov +360;
+    double M_big = camera_fov + 360;
     double M_big2 = max_head_rotation * 3;
 
-    //obtain polar coordinates of all the points (also in future)
+    // obtain polar coordinates of all the points (also in future)
     futurePointsCalculation();
 
     // clean non relevant points
     cleanNonRelevantPoints();
 
-    //initialize problem
+    // initialize problem
     mip = glp_create_prob();
     glp_set_prob_name(mip, "headDirection");
     glp_set_obj_dir(mip, GLP_MAX);
 
-    //set contraints (rows)
+    // set contraints (rows)
     std::string constr_name;
     int constr_num =0;
     int constr_point_int_num = 0;
@@ -50,7 +71,7 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
 
     for(int i=0; i<pol_points.rows(); i++)
     {
-        //cout << "pol_points index: " << i << '\n';
+        // cout << "pol_points index: " << i << '\n';
         constr_name = "cUP" + std::to_string(i+1);
         glp_set_row_name(mip, 2*i+1, constr_name.c_str());
         glp_set_row_bnds(mip, 2*i+1, GLP_UP, 0.0, pol_points(i,1) + camera_fov/2 + M_big);
@@ -332,7 +353,7 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
     glp_iocp parm;
     glp_init_iocp(&parm);
     parm.presolve = GLP_ON;
-    parm.tm_lim = time_limit;
+    parm.tm_lim = opti_time_limit;
 
     auto start = std::chrono::high_resolution_clock::now();
     int err = glp_intopt(mip, &parm);
@@ -454,7 +475,15 @@ void optimalHeadDirectionTv::futurePointsCalculation()
     for(int i=0; i<number_time_steps; i++)
     {
         //obtain absolute robot position at time t
-        robot_pose_t = robot_pose;
+        if(i==0)
+        {
+                    robot_pose_t = robot_pose;
+        }
+        else
+        {
+                    // DA METTERE QUI LA ROBOT POSITION
+        }
+
 
         //obtain polar coordinates at time t
         pol_points_t = obtainPolarCoordinates(robot_pose_t);
@@ -472,3 +501,22 @@ void optimalHeadDirectionTv::futurePointsCalculation()
     }
 }
 
+yarp::sig::Matrix optimalHeadDirectionTv::futureRobotPositions(yarp::sig::Matrix m_robot_pose, yarp::sig::Matrix m_abs_trajectory)
+{
+    yarp::sig::Matrix future_robot_positions;
+    future_robot_positions.resize(m_abs_trajectory.rows(), m_abs_trajectory.cols());
+
+    if(m_abs_trajectory.rows()>1)
+    {
+        for(int i=0;i<m_abs_trajectory.rows();i++)
+        {
+            // DA CALCOLARE QUI LA ROBOT POSITION
+        }
+        return future_robot_positions;
+    }
+    else
+    {
+        future_robot_positions.resize(0,0);
+        return future_robot_positions;
+    }
+}
