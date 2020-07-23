@@ -61,7 +61,7 @@ public:
     double std_weight_objects = 4;
     double std_weight_waypoints = 4;
     double time_step = 0.5;
-    double number_time_steps = 1;
+    double number_time_steps = 7;
     int opti_time_limit = 400;
 
 
@@ -96,7 +96,7 @@ private:
 
     void futurePointsCalculation(void);
 
-    yarp::sig::Matrix futureRobotPositions(yarp::sig::Matrix m_robot_pose, yarp::sig::Matrix m_abs_trajectory);
+    yarp::sig::Matrix futureRobotPosition(yarp::sig::Matrix m_robot_pose, yarp::sig::Matrix m_abs_trajectory, double time);
 
 };
 

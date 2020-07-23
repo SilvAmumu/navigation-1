@@ -4,6 +4,36 @@
 
 using namespace std::chrono;
 
+//UTILITY FUNCTIONS
+double interpolate( vector<double> &xData, vector<double> &yData, double x, bool extrapolate )
+{
+   int size = xData.size();
+
+   int i = 0;                                                                  // find left end of interval for interpolation
+   if ( x >= xData[size - 2] )                                                 // special case: beyond right end
+   {
+      i = size - 2;
+   }
+   else
+   {
+      while ( x > xData[i+1] ) i++;
+   }
+   double xL = xData[i], yL = yData[i], xR = xData[i+1], yR = yData[i+1];      // points on either side (unless beyond ends)
+   if ( !extrapolate )                                                         // if beyond ends of array and not extrapolating
+   {
+      if ( x < xL ) yR = yL;
+      if ( x > xR ) yL = yR;
+   }
+
+   double dydx = ( yR - yL ) / ( xR - xL );                                    // gradient
+
+   return yL + dydx * ( x - xL );                                              // linear interpolation
+}
+
+
+
+// MEMBERS
+
 optimalHeadDirectionTv::optimalHeadDirectionTv()
 {
 
@@ -21,18 +51,26 @@ void optimalHeadDirectionTv::solveProblem()  // TO DO: SET CONSTRAINTS ON MAX HE
     }
     else
     {
-        trajectory_time = abs_trajectory(abs_trajectory.rows(),6) - abs_trajectory(0,6);
+        trajectory_time = abs_trajectory(abs_trajectory.rows()-1,6) - abs_trajectory(0,6);
         while((trajectory_time < number_time_steps * time_step) && (number_time_steps > 1))
         {
             number_time_steps = number_time_steps - 1;
         }
+        // normalize time to 0
+        double initial_time = abs_trajectory(0,6);
+        for(int i=0; i<abs_trajectory.rows(); i++)
+        {
+            abs_trajectory(i,6) = abs_trajectory(i,6) - initial_time;
+        }
     }
 
-    // normalize time to 0
-    for(int i=0; i<abs_trajectory.rows(); i++)
-    {
-        abs_trajectory(i,6) = abs_trajectory(i,6) - abs_trajectory(0,6);
-    }
+#ifdef DEBUG
+    cout << " trajectory_time: " << trajectory_time << '\n';
+    cout << " number_time_steps: " << number_time_steps << '\n';
+#endif
+
+
+
 
 
     // set some variables
@@ -475,18 +513,14 @@ void optimalHeadDirectionTv::futurePointsCalculation()
     for(int i=0; i<number_time_steps; i++)
     {
         //obtain absolute robot position at time t
-        if(i==0)
-        {
-                    robot_pose_t = robot_pose;
-        }
-        else
-        {
-                    // DA METTERE QUI LA ROBOT POSITION
-        }
-
+        robot_pose_t = futureRobotPosition(robot_pose,abs_trajectory,i*time_step);
 
         //obtain polar coordinates at time t
         pol_points_t = obtainPolarCoordinates(robot_pose_t);
+
+#ifdef DEBUG
+        cout << "ROBOT POSE AT TIME: " << i*time_step << " is: \n" << robot_pose_t.toString() << "\n interpolated from: \n " << abs_trajectory.toString() << '\n';
+#endif
 
         //create a single matrix
         for(int j=0; j<pol_points_t.rows(); j++)
@@ -501,22 +535,31 @@ void optimalHeadDirectionTv::futurePointsCalculation()
     }
 }
 
-yarp::sig::Matrix optimalHeadDirectionTv::futureRobotPositions(yarp::sig::Matrix m_robot_pose, yarp::sig::Matrix m_abs_trajectory)
+yarp::sig::Matrix optimalHeadDirectionTv::futureRobotPosition(yarp::sig::Matrix m_robot_pose, yarp::sig::Matrix m_abs_trajectory, double time)
 {
-    yarp::sig::Matrix future_robot_positions;
-    future_robot_positions.resize(m_abs_trajectory.rows(), m_abs_trajectory.cols());
-
+    yarp::sig::Matrix future_robot_position = m_robot_pose;
     if(m_abs_trajectory.rows()>1)
     {
-        for(int i=0;i<m_abs_trajectory.rows();i++)
+        if(time > 0)
         {
-            // DA CALCOLARE QUI LA ROBOT POSITION
+            vector<double> xData(m_abs_trajectory.rows(),0);
+            vector<double> yData0(m_abs_trajectory.rows(),0);
+            vector<double> yData1(m_abs_trajectory.rows(),0);
+            vector<double> yData2(m_abs_trajectory.rows(),0);
+
+            for(int i=0; i<m_abs_trajectory.rows(); i++ )
+            {
+                xData[i] = m_abs_trajectory(i,6);
+                yData0[i] = m_abs_trajectory(i,0);
+                yData1[i] = m_abs_trajectory(i,1);
+                yData2[i] = m_abs_trajectory(i,2);
+            }
+            future_robot_position(0,0) = interpolate(xData, yData0, time, true);
+            future_robot_position(0,1) = interpolate(xData, yData1, time, true);
+            future_robot_position(0,2) = interpolate(xData, yData2, time, true);
         }
-        return future_robot_positions;
     }
-    else
-    {
-        future_robot_positions.resize(0,0);
-        return future_robot_positions;
-    }
+    return future_robot_position;
 }
+
+
