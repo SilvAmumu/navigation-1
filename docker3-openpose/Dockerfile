@@ -1,4 +1,4 @@
-FROM randaz81/r1slam:cuda10_0
+FROM randaz81/r1slam:cuda10.0_ubuntu18.04
 LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode

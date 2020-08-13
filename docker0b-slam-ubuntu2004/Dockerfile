@@ -3,7 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=03_06_2020
+ENV DOCKER_UPDATED_ON=06_07_2020
 
 # Update apt database
 RUN apt update
@@ -118,7 +118,7 @@ ENV robotology_install_user user1
 
 #gazebo models
 RUN mkdir -p $user1_home/.gazebo
-RUN hg clone https://bitbucket.org/osrf/gazebo_models $user1_home/.gazebo/models
+RUN git clone https://github.com/osrf/gazebo_models $user1_home/.gazebo/models
 RUN echo "export PATH=$PATH:$robotology_install_folder/navigation/build/bin" >> $user1_home/.bashrc
 RUN echo "source /opt/ros/noetic/setup.bash" >> $user1_home/.bashrc
 
@@ -169,7 +169,7 @@ RUN cd yarp && mkdir build && cd build && \
     sudo make install
  
 # Install yarp completion   
-RUN sudo ln -s /usr/local/share/bash-completion/completion/yarp /usr/share/bash-completion/completions
+RUN sudo ln -s /usr/local/share/bash-completion/completions/yarp /usr/share/bash-completion/completions
 
 # Build icub-main
 USER $robotology_install_user
@@ -184,7 +184,6 @@ RUN cd icub-main && mkdir build && cd build && \
     sudo make install
 
 # Build navigation
-ARG DOCKER_NAV_WAYPOINT=5
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
 RUN git clone https://github.com/robotology/navigation.git -b master
@@ -205,7 +204,6 @@ RUN cd gazebo-yarp-plugins && mkdir build && cd build && \
     sudo make install
 
 # CER stuff
-ARG _CER_WAYPOINT
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
 RUN git clone https://github.com/robotology/cer.git -b master
@@ -253,14 +251,6 @@ ARG GITHUB_TOKEN
 #    make install
 # RUN rm -Rf audition-projects-helpers
 
-#unix socket
-ARG DOCKER_UNIXSOCKET_WAYPOINT=1
-USER $robotology_install_user
-WORKDIR $robotology_install_folder
-RUN git clone --branch master https://github.com/robotology/yarp-unix-socket.git 
-RUN cd yarp-unix-socket && mkdir build && cd build && cmake .. && \
-    sudo make install
-    
 # Set up .bashrc
 RUN echo "PS1='\[\e]0;\u \w\a\]\[\033[01;32m\]\u\[\033[00m\] \[\033[01;34m\]\w\[\033[00m\] \$ '" >> /home/$robotology_install_user/.bashrc
 RUN echo "export PATH=\$PATH:\$robotology_install_folder/iCubContrib/bin" >> /home/$robotology_install_user/.bashrc

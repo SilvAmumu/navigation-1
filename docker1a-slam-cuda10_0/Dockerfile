@@ -3,7 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=03_06_2020
+ENV DOCKER_UPDATED_ON=06_07_2020
 
 # Update apt database
 RUN apt update
@@ -39,8 +39,8 @@ RUN git clone https://github.com/LibVNC/x11vnc.git /opt/x11vnc && \
 
 
 # Install markserv
-RUN apt install -y nodejs npm
-RUN npm install --global markserv
+# RUN apt install -y nodejs npm
+# RUN npm install --global markserv
 
 # Install jupyter
 RUN pip install jupyter
@@ -119,7 +119,7 @@ ENV robotology_install_user user1
 
 #gazebo models
 RUN mkdir -p $user1_home/.gazebo
-RUN hg clone https://bitbucket.org/osrf/gazebo_models $user1_home/.gazebo/models
+RUN git clone https://github.com/osrf/gazebo_models $user1_home/.gazebo/models
 RUN echo "export PATH=$PATH:$robotology_install_folder/navigation/build/bin" >> $user1_home/.bashrc
 RUN echo "source /opt/ros/melodic/setup.bash" >> $user1_home/.bashrc
 
@@ -135,7 +135,7 @@ RUN cd ycm && mkdir build && cd build && \
 # Build robot-testing-framework
 USER $robotology_install_user
 WORKDIR $robotology_install_folder
-RUN git clone https://github.com/robotology/robot-testing-framework.git -b $BRANCH
+RUN git clone http://github.com/robotology/robot-testing-framework.git -b $BRANCH
 RUN cd robot-testing-framework && mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE && \
@@ -265,13 +265,6 @@ ARG GITHUB_TOKEN
 #    make install
 # RUN rm -Rf audition-projects-helpers
 
-#unix socket
-USER $robotology_install_user
-WORKDIR $robotology_install_folder
-RUN git clone --branch master https://github.com/robotology/yarp-unix-socket.git 
-RUN cd yarp-unix-socket && mkdir build && cd build && cmake .. && \
-    sudo make install
-    
 # Set up .bashrc
 RUN echo "PS1='\[\e]0;\u \w\a\]\[\033[01;32m\]\u\[\033[00m\] \[\033[01;34m\]\w\[\033[00m\] \$ '" >> /home/$robotology_install_user/.bashrc
 RUN echo "export PATH=\$PATH:\$robotology_install_folder/iCubContrib/bin" >> /home/$robotology_install_user/.bashrc

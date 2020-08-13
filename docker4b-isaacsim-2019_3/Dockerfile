@@ -3,7 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=3_6_2020
+ENV DOCKER_UPDATED_ON=7_8_2020
 
 # Update apt database
 RUN sudo apt update

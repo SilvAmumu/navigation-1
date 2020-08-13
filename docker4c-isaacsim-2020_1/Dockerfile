@@ -3,7 +3,7 @@ LABEL maintainer="marco.randazzo@iit.it"
 
 # Non-interactive installation mode
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOCKER_UPDATED_ON=3_6_2020
+ENV DOCKER_UPDATED_ON=7_8_2020
 
 # Update apt database
 RUN sudo apt update
@@ -48,7 +48,7 @@ RUN $robotology_install_folder/isaac/isaac-sdk/engine/build/scripts/install_depe
 # The following commands are not automatically performed by now and should be executed the first time to complete the built image
 #
 # This is the repo where the bridge stuff is located
-# RUN git clone https://github.com/robotology/isaac-bridge
+# RUN git clone --branch isaac2020.1 https://github.com/robotology/isaac-bridge
 #
 # Links
 # RUN ln -s ~/isaac/isaac-sim  ~/isaac_sim_unity3d
